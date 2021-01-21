@@ -4,7 +4,7 @@ namespace Pushword\Flat\Importer;
 
 use DateTime;
 use DateTimeInterface;
-use iBudasov\Iptc\Manager as Iptc;
+//use iBudasov\Iptc\Manager as Iptc;
 use Pushword\Core\Entity\MediaInterface;
 
 /**
@@ -29,11 +29,12 @@ trait ImageImporterTrait
     {
         $data = [];
 
+        /*
         if ('image/jpeg' == $mime) {
             $manager = Iptc::create();
             $manager->loadFile($filePath);
             $data = array_merge($data, $manager->getTags());
-        }
+        }*/
 
         $reader = \PHPExif\Reader\Reader::factory(\PHPExif\Reader\Reader::TYPE_NATIVE);
         $exif = $reader->read($filePath);
