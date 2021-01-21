@@ -61,7 +61,7 @@ trait ImageImporterTrait
                 ->setSize(filesize($filePath))
                 ->setDimensions([$imgSize[0], $imgSize[1]]);
 
-        $data = $this->getImageData($filePath);//, $imgSize['mime']);
+        $data = $this->getImageData($filePath); //, $imgSize['mime']);
 
         $media->setCustomProperties([]);
 
