@@ -41,9 +41,7 @@ trait ImageImporterTrait
             $data = array_merge($data, $exif->getData());
         }
 
-        $data = array_merge($data, $this->getData($filePath));
-
-        return $data;
+        return array_merge($data, $this->getData($filePath));
     }
 
     private function importImageMediaData(MediaInterface $media, string $filePath): void
