@@ -74,7 +74,9 @@ class PageImporter extends AbstractImporter
             $slug = substr($slug, 0, -\strlen('index'));
         }
 
-        return Page::normalizeSlug($slug);
+        $slug = Page::normalizeSlug($slug);
+
+        return $slug;
     }
 
     private function getPageFromSlug($slug): PageInterface
