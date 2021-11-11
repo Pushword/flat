@@ -9,6 +9,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class FlatFileImportCommand extends Command
 {
+    protected static $defaultName = 'pushword:flat:import';
+
     protected \Pushword\Flat\FlatFileImporter $importer;
 
     public function __construct(
@@ -21,9 +23,7 @@ class FlatFileImportCommand extends Command
 
     protected function configure()
     {
-        $this
-            ->setName('pushword:flat:import')
-            ->setDescription('Syncing flat file inside database.')
+        $this->setDescription('Syncing flat file inside database.')
             ->addArgument('host', InputArgument::OPTIONAL, '');
     }
 

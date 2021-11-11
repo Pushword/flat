@@ -9,6 +9,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class FlatFileExportCommand extends Command
 {
+    protected static $defaultName = 'pushword:flat:export';
+
     protected FlatFileExporter $exporter;
 
     public function __construct(
@@ -21,9 +23,7 @@ class FlatFileExportCommand extends Command
 
     protected function configure()
     {
-        $this
-            ->setName('pushword:flat:export')
-            ->setDescription('Exporting database toward flat yaml files (and json for media).')
+        $this->setDescription('Exporting database toward flat yaml files (and json for media).')
             ->addArgument('host', InputArgument::OPTIONAL, '')
             ->addArgument('exportDir', InputArgument::OPTIONAL, '');
     }
