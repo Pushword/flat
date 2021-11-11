@@ -55,10 +55,7 @@ class FlatFileContentDirFinder
         $app = $this->apps->get($host);
 
         $dir = $app->get('flat_content_dir');
-        if (! $dir) {
-            return false;
-        }
 
-        return true;
+        return (bool) $dir;
     }
 }

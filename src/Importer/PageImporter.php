@@ -80,7 +80,7 @@ class PageImporter extends AbstractImporter
         $page = $this->getPage($slug);
         $this->newPage = false;
 
-        if (! $page) {
+        if (null === $page) {
             $pageClass = $this->entityClass;
             $page = new $pageClass();
             $this->newPage = true;
@@ -89,11 +89,14 @@ class PageImporter extends AbstractImporter
         return $page;
     }
 
-    private function editPage(string $slug, array $data, string $content, DateTime $dateTime)
+    /**
+     * @param \DateTime|\DateTimeImmutable $dateTime
+     */
+    private function editPage(string $slug, array $data, string $content, DateTimeInterface $dateTime)
     {
         $page = $this->getPageFromSlug($slug);
 
-        if (false === $this->newPage && $page->getUpdatedAt() >= $dateTime) {
+        if (! $this->newPage && $page->getUpdatedAt() >= $dateTime) {
             return; // no update needed
         }
 
@@ -103,7 +106,7 @@ class PageImporter extends AbstractImporter
             $key = $this->normalizePropertyName($key);
             $camelKey = self::underscoreToCamelCase($key);
 
-            if (\in_array($camelKey, array_keys($this->getObjectRequiredProperties()))) {
+            if (\array_key_exists($camelKey, $this->getObjectRequiredProperties())) {
                 $this->toAddAtTheEnd[$slug] = array_merge($this->toAddAtTheEnd[$slug] ?? [], [$camelKey => $value]);
 
                 continue;
@@ -123,12 +126,12 @@ class PageImporter extends AbstractImporter
 
         $page->setHost($this->apps->get()->getMainHost());
         $page->setSlug($slug);
-        if (! $page->getLocale()) {
+        if ('' === $page->getLocale() || '0' === $page->getLocale()) {
             $page->setLocale($this->apps->get()->getLocale());
         }
         $page->setMainContent($content);
 
-        if (true === $this->newPage) {
+        if ($this->newPage) {
             $this->em->persist($page);
         }
     }

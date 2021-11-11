@@ -54,7 +54,7 @@ class FlatFileImporter
         $this->importFiles($this->mediaDir, 'media');
         $this->mediaImporter->finishImport();
 
-        $this->importFiles($this->customMediaDir ? $contentDir.$this->customMediaDir : $contentDir.'/media', 'media');
+        $this->importFiles('' !== $this->customMediaDir && '0' !== $this->customMediaDir ? $contentDir.$this->customMediaDir : $contentDir.'/media', 'media');
         $this->mediaImporter->finishImport();
 
         $this->importFiles($contentDir, 'page');

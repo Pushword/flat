@@ -139,20 +139,20 @@ class FlatFileExporter
 
         $data = [];
         foreach ($properties as $property) {
-            if (\in_array($property, ['id'])) {
+            if ('id' == $property) {
                 continue;
             }
             $getter = 'get'.ucfirst($property);
             $data[$property] = $media->$getter();
         }
 
-        if ($this->copyMedia) {
+        if ('' !== $this->copyMedia && '0' !== $this->copyMedia) {
             $destination = $this->exportDir.'/'.$this->copyMedia.'/'.$media->getMedia();
             $this->filesystem->copy($media->getPath(), $destination);
         }
 
         $jsonContent = \Safe\json_encode($data, \JSON_PRETTY_PRINT);
-        $jsonFile = ($this->copyMedia ? $this->exportDir.'/'.$this->copyMedia : $this->mediaDir).'/'.$media->getMedia().'.json';
+        $jsonFile = ('' !== $this->copyMedia && '0' !== $this->copyMedia ? $this->exportDir.'/'.$this->copyMedia : $this->mediaDir).'/'.$media->getMedia().'.json';
         $this->filesystem->dumpFile($jsonFile, $jsonContent);
     }
 
