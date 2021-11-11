@@ -50,9 +50,9 @@ class FlatFileExporter
         string $mediaDir,
         string $pageClass,
         string $mediaClass,
-        AppPool $apps,
+        AppPool $appPool,
         EntityManagerInterface $entityManager,
-        FlatFileContentDirFinder $contentDirFinder,
+        FlatFileContentDirFinder $flatFileContentDirFinder,
         PageImporter $pageImporter,
         MediaImporter $mediaImporter
     ) {
@@ -61,8 +61,8 @@ class FlatFileExporter
         $this->pageClass = $pageClass;
         $this->mediaClass = $mediaClass;
         $this->entityManager = $entityManager;
-        $this->apps = $apps;
-        $this->contentDirFinder = $contentDirFinder;
+        $this->apps = $appPool;
+        $this->contentDirFinder = $flatFileContentDirFinder;
         $this->pageImporter = $pageImporter;
         $this->mediaImporter = $mediaImporter;
         $this->filesystem = new Filesystem();
@@ -125,8 +125,8 @@ class FlatFileExporter
 
     private function exportMedias(): void
     {
-        $repo = Repository::getMediaRepository($this->entityManager, $this->mediaClass);
-        $medias = $repo->findAll();
+        $mediaRepository = Repository::getMediaRepository($this->entityManager, $this->mediaClass);
+        $medias = $mediaRepository->findAll();
 
         foreach ($medias as $media) {
             $this->exportMedia($media);

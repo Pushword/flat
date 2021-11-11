@@ -17,11 +17,11 @@ class FlatFileContentDirFinder
     protected array $contentDir = [];
 
     public function __construct(
-        AppPool $apps,
+        AppPool $appPool,
         string $projectDir
     ) {
         $this->projectDir = $projectDir;
-        $this->apps = $apps;
+        $this->apps = $appPool;
     }
 
     public function get(string $host): string

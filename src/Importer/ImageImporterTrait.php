@@ -11,11 +11,11 @@ use Pushword\Core\Entity\MediaInterface;
  */
 trait ImageImporterTrait
 {
-    public function importImage(string $filePath, DateTimeInterface $lastEditDatetime)
+    public function importImage(string $filePath, DateTimeInterface $dateTime)
     {
         $media = $this->getMedia($this->getFilename($filePath));
 
-        if (false === $this->newMedia && $media->getUpdatedAt() >= $lastEditDatetime) {
+        if (false === $this->newMedia && $media->getUpdatedAt() >= $dateTime) {
             return; // no update needed
         }
 

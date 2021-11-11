@@ -32,15 +32,15 @@ class FlatFileImporter
     public function __construct(
         string $projectDir,
         string $mediaDir,
-        AppPool $apps,
-        FlatFileContentDirFinder $contentDirFinder,
+        AppPool $appPool,
+        FlatFileContentDirFinder $flatFileContentDirFinder,
         PageImporter $pageImporter,
         MediaImporter $mediaImporter
     ) {
         $this->projectDir = $projectDir;
         $this->mediaDir = $mediaDir;
-        $this->apps = $apps;
-        $this->contentDirFinder = $contentDirFinder;
+        $this->apps = $appPool;
+        $this->contentDirFinder = $flatFileContentDirFinder;
         $this->pageImporter = $pageImporter;
         $this->mediaImporter = $mediaImporter;
     }
@@ -94,10 +94,10 @@ class FlatFileImporter
 
     private function importFile($filePath, $type)
     {
-        $lastEdit = (new DateTime())->setTimestamp(\Safe\filemtime($filePath));
+        $dateTime = (new DateTime())->setTimestamp(\Safe\filemtime($filePath));
 
         $importer = $type.'Importer';
 
-        return $this->$importer->import($filePath, $lastEdit);
+        return $this->$importer->import($filePath, $dateTime);
     }
 }

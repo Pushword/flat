@@ -14,9 +14,9 @@ class FlatFileImportCommand extends Command
     protected \Pushword\Flat\FlatFileImporter $importer;
 
     public function __construct(
-        FlatFileImporter $importer
+        FlatFileImporter $flatFileImporter
     ) {
-        $this->importer = $importer;
+        $this->importer = $flatFileImporter;
 
         parent::__construct();
     }

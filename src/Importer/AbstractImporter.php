@@ -18,16 +18,16 @@ abstract class AbstractImporter
     protected \Pushword\Core\Component\App\AppPool $apps;
 
     public function __construct(
-        EntityManagerInterface $em,
-        AppPool $apps,
+        EntityManagerInterface $entityManager,
+        AppPool $appPool,
         string $entityClass
     ) {
         $this->entityClass = $entityClass;
-        $this->apps = $apps;
-        $this->em = $em;
+        $this->apps = $appPool;
+        $this->em = $entityManager;
     }
 
-    abstract public function import(string $filePath, DateTimeInterface $lastEditDatetime);
+    abstract public function import(string $filePath, DateTimeInterface $dateTime);
 
     public function finishImport()
     {

@@ -27,9 +27,9 @@ class PageImporter extends AbstractImporter
 
     private bool $newPage = false;
 
-    public function setContentDirFinder(FlatFileContentDirFinder $contentDirFinder)
+    public function setContentDirFinder(FlatFileContentDirFinder $flatFileContentDirFinder)
     {
-        $this->contentDirFinder = $contentDirFinder;
+        $this->contentDirFinder = $flatFileContentDirFinder;
     }
 
     public function setMediaClass(string $mediaClass)
@@ -44,22 +44,22 @@ class PageImporter extends AbstractImporter
         return $this->contentDirFinder->get($host);
     }
 
-    public function import(string $filePath, DateTimeInterface $lastEditDatetime): void
+    public function import(string $filePath, DateTimeInterface $dateTime): void
     {
         if (0 !== strpos(finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'text/')) {
             return;
         }
 
         $content = \Safe\file_get_contents($filePath);
-        $yamlParsed = YamlFrontMatter::parse($content);
+        $document = YamlFrontMatter::parse($content);
 
-        if (empty($yamlParsed->matter())) {
+        if (empty($document->matter())) {
             return; //throw new Exception('No content found in `'.$filePath.'`');
         }
 
-        $slug = $yamlParsed->matter('slug') ?? $this->filePathToSlug($filePath);
+        $slug = $document->matter('slug') ?? $this->filePathToSlug($filePath);
 
-        $this->editPage($slug, $yamlParsed->matter(), $yamlParsed->body(), $lastEditDatetime);
+        $this->editPage($slug, $document->matter(), $document->body(), $dateTime);
     }
 
     private function filePathToSlug($filePath): string
@@ -89,11 +89,11 @@ class PageImporter extends AbstractImporter
         return $page;
     }
 
-    private function editPage(string $slug, array $data, string $content, DateTime $lastEditDatetime)
+    private function editPage(string $slug, array $data, string $content, DateTime $dateTime)
     {
         $page = $this->getPageFromSlug($slug);
 
-        if (false === $this->newPage && $page->getUpdatedAt() >= $lastEditDatetime) {
+        if (false === $this->newPage && $page->getUpdatedAt() >= $dateTime) {
             return; // no update needed
         }
 

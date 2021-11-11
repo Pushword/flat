@@ -37,17 +37,17 @@ class MediaImporter extends AbstractImporter
         return $this;
     }
 
-    public function import(string $filePath, DateTimeInterface $lastEditDatetime): void
+    public function import(string $filePath, DateTimeInterface $dateTime): void
     {
         if (! $this->isImage($filePath)) {
             if (str_ends_with($filePath, '.json') && file_exists(\Safe\substr($filePath, 0, -5))) { // data file
                 return;
             }
-            $this->importMedia($filePath, $lastEditDatetime);
+            $this->importMedia($filePath, $dateTime);
 
             return;
         }
-        $this->importImage($filePath, $lastEditDatetime);
+        $this->importImage($filePath, $dateTime);
     }
 
     private function isImage($filePath): bool
@@ -56,11 +56,11 @@ class MediaImporter extends AbstractImporter
         //0 !== strpos(finfo_file(finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'image/') || preg_match('/\.webp$/', $filePath);
     }
 
-    public function importMedia(string $filePath, DateTimeInterface $lastEditDatetime): void
+    public function importMedia(string $filePath, DateTimeInterface $dateTime): void
     {
         $media = $this->getMedia($this->getFilename($filePath));
 
-        if (1 == 2 && false === $this->newMedia && $media->getUpdatedAt() >= $lastEditDatetime) {
+        if (1 == 2 && false === $this->newMedia && $media->getUpdatedAt() >= $dateTime) {
             return; // no update needed
         }
 

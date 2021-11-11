@@ -14,9 +14,9 @@ class FlatFileExportCommand extends Command
     protected FlatFileExporter $exporter;
 
     public function __construct(
-        FlatFileExporter $exporter
+        FlatFileExporter $flatFileExporter
     ) {
-        $this->exporter = $exporter;
+        $this->exporter = $flatFileExporter;
 
         parent::__construct();
     }
