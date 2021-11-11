@@ -46,11 +46,11 @@ class PageImporter extends AbstractImporter
 
     public function import(string $filePath, DateTimeInterface $lastEditDatetime): void
     {
-        if (0 !== strpos(finfo_file(finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'text/')) {
+        if (0 !== strpos(finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'text/')) {
             return;
         }
 
-        $content = file_get_contents($filePath);
+        $content = \Safe\file_get_contents($filePath);
         $yamlParsed = YamlFrontMatter::parse($content);
 
         if (empty($yamlParsed->matter())) {
@@ -64,12 +64,12 @@ class PageImporter extends AbstractImporter
 
     private function filePathToSlug($filePath): string
     {
-        $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath));
+        $slug = \Safe\preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath));
 
         if ('index' == $slug) {
             $slug = 'homepage';
         } elseif ('index' == basename($slug)) {
-            $slug = substr($slug, 0, -\strlen('index'));
+            $slug = \Safe\substr($slug, 0, -\strlen('index'));
         }
 
         return Page::normalizeSlug($slug);
@@ -158,7 +158,7 @@ class PageImporter extends AbstractImporter
 
                 if (MediaInterface::class === $object) {
                     $setter = 'set'.ucfirst($property);
-                    $mediaName = preg_replace('@^/?media/(default)?/@', '', $value);
+                    $mediaName = \Safe\preg_replace('@^/?media/(default)?/@', '', $value);
                     $media = $this->getMedia($mediaName);
                     if (null === $media) {
                         throw new Exception('Media `'.$value.'` ('.$mediaName.') not found in `'.$slug.'`.');

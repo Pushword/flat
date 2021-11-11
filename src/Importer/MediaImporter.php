@@ -40,7 +40,7 @@ class MediaImporter extends AbstractImporter
     public function import(string $filePath, DateTimeInterface $lastEditDatetime): void
     {
         if (! $this->isImage($filePath)) {
-            if (str_ends_with($filePath, '.json') && file_exists(substr($filePath, 0, -5))) { // data file
+            if (str_ends_with($filePath, '.json') && file_exists(\Safe\substr($filePath, 0, -5))) { // data file
                 return;
             }
             $this->importMedia($filePath, $lastEditDatetime);
@@ -69,8 +69,8 @@ class MediaImporter extends AbstractImporter
         $media
             ->setProjectDir($this->projectDir)
             ->setStoreIn(\dirname($filePath))
-            ->setSize(filesize($filePath))
-            ->setMimeType(finfo_file(finfo_open(\FILEINFO_MIME_TYPE), $filePath));
+            ->setSize(\Safe\filesize($filePath))
+            ->setMimeType(finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath));
 
         $data = $this->getData($filePath);
 
@@ -108,9 +108,9 @@ class MediaImporter extends AbstractImporter
             return [];
         }
 
-        $jsonData = json_decode(file_get_contents($filePath.'.json'), true);
+        $jsonData = \Safe\json_decode(\Safe\file_get_contents($filePath.'.json'), true);
 
-        return $jsonData ?: [];
+        return \is_array($jsonData) ? $jsonData : [];
     }
 
     public function getFilename($filePath): string

@@ -77,7 +77,7 @@ class FlatFileImporter
             return;
         }
 
-        $files = scandir($dir);
+        $files = \Safe\scandir($dir);
         foreach ($files as $file) {
             if (\in_array($file, ['.', '..'])) {
                 continue;
@@ -94,7 +94,7 @@ class FlatFileImporter
 
     private function importFile($filePath, $type)
     {
-        $lastEdit = (new DateTime())->setTimestamp(filemtime($filePath));
+        $lastEdit = (new DateTime())->setTimestamp(\Safe\filemtime($filePath));
 
         $importer = $type.'Importer';
 

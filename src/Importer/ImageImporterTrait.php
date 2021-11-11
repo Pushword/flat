@@ -46,13 +46,13 @@ trait ImageImporterTrait
 
     private function importImageMediaData(MediaInterface $media, string $filePath): void
     {
-        $imgSize = getimagesize($filePath);
+        $imgSize = \Safe\getimagesize($filePath);
 
         $media
                 ->setProjectDir($this->projectDir)
                 ->setStoreIn(\dirname($filePath))
                 ->setMimeType($imgSize['mime'])
-                ->setSize(filesize($filePath))
+                ->setSize(\Safe\filesize($filePath))
                 ->setDimensions([$imgSize[0], $imgSize[1]]);
 
         $data = $this->getImageData($filePath); //, $imgSize['mime']);

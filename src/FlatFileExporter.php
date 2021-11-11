@@ -151,7 +151,7 @@ class FlatFileExporter
             $this->filesystem->copy($media->getPath(), $destination);
         }
 
-        $jsonContent = json_encode($data, \JSON_PRETTY_PRINT);
+        $jsonContent = \Safe\json_encode($data, \JSON_PRETTY_PRINT);
         $jsonFile = ($this->copyMedia ? $this->exportDir.'/'.$this->copyMedia : $this->mediaDir).'/'.$media->getMedia().'.json';
         $this->filesystem->dumpFile($jsonFile, $jsonContent);
     }
