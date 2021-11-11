@@ -15,7 +15,7 @@ class MediaImporter extends AbstractImporter
 {
     use ImageImporterTrait;
 
-    protected $mediaDir;
+    protected ?string $mediaDir = null;
 
     protected $projectDir;
 

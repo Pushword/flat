@@ -17,13 +17,11 @@ use Spatie\YamlFrontMatter\YamlFrontMatter;
  */
 class PageImporter extends AbstractImporter
 {
-    /** @var array */
-    protected $pages;
+    protected ?array $pages = null;
 
-    protected $toAddAtTheEnd = [];
+    protected array $toAddAtTheEnd = [];
 
-    /** @var FlatFileContentDirFinder */
-    protected $contentDirFinder;
+    protected ?\Pushword\Flat\FlatFileContentDirFinder $contentDirFinder = null;
 
     protected string $mediaClass;
 
@@ -227,7 +225,7 @@ class PageImporter extends AbstractImporter
             return Repository::getPageRepository($this->em, $this->entityClass)->findOneBy($slug);
         }
 
-        $pages = array_filter($this->getPages(), function ($page) use ($slug) { return $page->getSlug() == $slug; });
+        $pages = array_filter($this->getPages(), fn ($page) => $page->getSlug() == $slug);
         $pages = array_values($pages);
 
         return $pages[0] ?? null;

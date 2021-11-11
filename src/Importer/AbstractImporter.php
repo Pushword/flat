@@ -11,14 +11,11 @@ use Pushword\Core\Component\App\AppPool;
  */
 abstract class AbstractImporter
 {
-    /** @var string */
-    protected $entityClass;
+    protected string $entityClass;
 
-    /** @var EntityManagerInterface */
-    protected $em;
+    protected \Doctrine\ORM\EntityManagerInterface $em;
 
-    /** @var AppPool */
-    protected $apps;
+    protected \Pushword\Core\Component\App\AppPool $apps;
 
     public function __construct(
         EntityManagerInterface $em,

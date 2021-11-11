@@ -10,12 +10,11 @@ use Pushword\Core\Component\App\AppPool;
  */
 class FlatFileContentDirFinder
 {
-    /** @var AppPool */
-    protected $apps;
+    protected \Pushword\Core\Component\App\AppPool $apps;
 
-    protected $projectDir;
+    protected string $projectDir;
 
-    protected $contentDir = [];
+    protected array $contentDir = [];
 
     public function __construct(
         AppPool $apps,

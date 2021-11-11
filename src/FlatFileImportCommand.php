@@ -9,8 +9,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class FlatFileImportCommand extends Command
 {
-    /** @var FlatFileImporter */
-    protected $importer;
+    protected \Pushword\Flat\FlatFileImporter $importer;
 
     public function __construct(
         FlatFileImporter $importer
