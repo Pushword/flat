@@ -108,12 +108,14 @@ class FlatFileExporter
             if (\in_array($property, ['mainContent', 'id'])) {
                 continue;
             }
+
             $getter = 'get'.ucfirst($property);
             $value = $page->$getter();
             if (null === $value
             || ('customProperties' == $property && empty($value))) {
                 continue;
             }
+
             $data[$property] = $value;
         }
 
@@ -142,6 +144,7 @@ class FlatFileExporter
             if ('id' == $property) {
                 continue;
             }
+
             $getter = 'get'.ucfirst($property);
             $data[$property] = $media->$getter();
         }

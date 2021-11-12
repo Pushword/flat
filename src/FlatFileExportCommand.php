@@ -42,6 +42,7 @@ class FlatFileExportCommand extends Command
             $output->writeln('Results:');
             $output->writeln($exportDir);
         }
+
         $output->writeln('Import ended.');
 
         return 0;

@@ -43,10 +43,12 @@ class MediaImporter extends AbstractImporter
             if (str_ends_with($filePath, '.json') && file_exists(\Safe\substr($filePath, 0, -5))) { // data file
                 return;
             }
+
             $this->importMedia($filePath, $dateTime);
 
             return;
         }
+
         $this->importImage($filePath, $dateTime);
     }
 
@@ -94,6 +96,7 @@ class MediaImporter extends AbstractImporter
 
                 continue;
             }
+
             $media->setCustomProperty($key, $value);
         }
 

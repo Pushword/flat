@@ -111,6 +111,7 @@ class PageImporter extends AbstractImporter
 
                 continue;
             }
+
             $setter = 'set'.ucfirst($camelKey);
             if (method_exists($page, $setter)) {
                 if (\in_array($camelKey, ['publishedAt', 'createdAt', 'updatedAt'])) {
@@ -121,6 +122,7 @@ class PageImporter extends AbstractImporter
 
                 continue;
             }
+
             $page->setCustomProperty($key, $value);
         }
 
@@ -129,6 +131,7 @@ class PageImporter extends AbstractImporter
         if ('' === $page->getLocale() || '0' === $page->getLocale()) {
             $page->setLocale($this->apps->get()->getLocale());
         }
+
         $page->setMainContent($content);
 
         if ($this->newPage) {
@@ -166,6 +169,7 @@ class PageImporter extends AbstractImporter
                     if (null === $media) {
                         throw new Exception('Media `'.$value.'` ('.$mediaName.') not found in `'.$slug.'`.');
                     }
+
                     $page->$setter($media);
 
                     continue;
@@ -239,6 +243,7 @@ class PageImporter extends AbstractImporter
         if (true === $cache && $this->pages) {
             return $this->pages;
         }
+
         $repo = Repository::getPageRepository($this->em, $this->entityClass);
 
         return $this->pages = $repo->findByHost($this->apps->get()->getMainHost());

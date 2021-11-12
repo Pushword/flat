@@ -82,6 +82,7 @@ class FlatFileImporter
             if (\in_array($file, ['.', '..'])) {
                 continue;
             }
+
             if (is_dir($dir.'/'.$file)) {
                 $this->importFiles($dir.'/'.$file, $type);
 
