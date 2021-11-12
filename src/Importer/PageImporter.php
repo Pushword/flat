@@ -221,7 +221,7 @@ class PageImporter extends AbstractImporter
         return $properties[$key];
     }
 
-    private function getMedia($media)
+    private function getMedia(string $media): ?MediaInterface
     {
         return Repository::getMediaRepository($this->em, $this->mediaClass)->findOneBy(['media' => $media]);
     }
@@ -232,7 +232,7 @@ class PageImporter extends AbstractImporter
             return Repository::getPageRepository($this->em, $this->entityClass)->findOneBy($slug);
         }
 
-        $pages = array_filter($this->getPages(), fn ($page) => $page->getSlug() == $slug);
+        $pages = array_filter($this->getPages(), fn ($page): bool => $page->getSlug() == $slug);
         $pages = array_values($pages);
 
         return $pages[0] ?? null;
