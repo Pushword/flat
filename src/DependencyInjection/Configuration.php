@@ -14,6 +14,9 @@ class Configuration implements ConfigurationInterface
         'flat_content_dir',
     ];
 
+    /**
+     * @return \Symfony\Component\Config\Definition\Builder\TreeBuilder
+     */
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder('flat');

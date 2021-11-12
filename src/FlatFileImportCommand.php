@@ -21,12 +21,15 @@ class FlatFileImportCommand extends Command
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setDescription('Syncing flat file inside database.')
             ->addArgument('host', InputArgument::OPTIONAL, '');
     }
 
+    /**
+     * @return int
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $output->writeln('Import will start in few seconds...');

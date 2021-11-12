@@ -29,7 +29,7 @@ abstract class AbstractImporter
 
     abstract public function import(string $filePath, DateTimeInterface $dateTime);
 
-    public function finishImport()
+    public function finishImport(): void
     {
         $this->em->flush();
     }

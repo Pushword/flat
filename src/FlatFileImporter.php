@@ -93,7 +93,7 @@ class FlatFileImporter
         }
     }
 
-    private function importFile($filePath, $type)
+    private function importFile($filePath, string $type)
     {
         $dateTime = (new DateTime())->setTimestamp(\Safe\filemtime($filePath));
 

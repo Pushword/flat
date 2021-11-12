@@ -27,16 +27,19 @@ class PageImporter extends AbstractImporter
 
     private bool $newPage = false;
 
-    public function setContentDirFinder(FlatFileContentDirFinder $flatFileContentDirFinder)
+    public function setContentDirFinder(FlatFileContentDirFinder $flatFileContentDirFinder): void
     {
         $this->contentDirFinder = $flatFileContentDirFinder;
     }
 
-    public function setMediaClass(string $mediaClass)
+    public function setMediaClass(string $mediaClass): void
     {
         $this->mediaClass = $mediaClass;
     }
 
+    /**
+     * @return string
+     */
     private function getContentDir()
     {
         $host = $this->apps->get()->getMainHost();
@@ -62,7 +65,7 @@ class PageImporter extends AbstractImporter
         $this->editPage($slug, $document->matter(), $document->body(), $dateTime);
     }
 
-    private function filePathToSlug($filePath): string
+    private function filePathToSlug(string $filePath): string
     {
         $slug = \Safe\preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath));
 
@@ -75,7 +78,7 @@ class PageImporter extends AbstractImporter
         return Page::normalizeSlug($slug);
     }
 
-    private function getPageFromSlug($slug): PageInterface
+    private function getPageFromSlug(string $slug): PageInterface
     {
         $page = $this->getPage($slug);
         $this->newPage = false;
@@ -92,7 +95,7 @@ class PageImporter extends AbstractImporter
     /**
      * @param \DateTime|\DateTimeImmutable $dateTime
      */
-    private function editPage(string $slug, array $data, string $content, DateTimeInterface $dateTime)
+    private function editPage(string $slug, array $data, string $content, DateTimeInterface $dateTime): void
     {
         $page = $this->getPageFromSlug($slug);
 
@@ -139,6 +142,9 @@ class PageImporter extends AbstractImporter
         }
     }
 
+    /**
+     * @return string
+     */
     private function normalizePropertyName(string $propertyName)
     {
         if ('parent' == $propertyName) {
@@ -180,7 +186,7 @@ class PageImporter extends AbstractImporter
         }
     }
 
-    private function addPages(PageInterface $page, string $property, array $pages)
+    private function addPages(PageInterface $page, string $property, array $pages): void
     {
         $setter = 'set'.ucfirst($property);
         $this->$setter([]);
@@ -190,7 +196,7 @@ class PageImporter extends AbstractImporter
         }
     }
 
-    public function finishImport()
+    public function finishImport(): void
     {
         $this->em->flush();
 
@@ -226,19 +232,25 @@ class PageImporter extends AbstractImporter
         return Repository::getMediaRepository($this->em, $this->mediaClass)->findOneBy(['media' => $media]);
     }
 
-    private function getPage($slug): ?PageInterface
+    /**
+     * @param string|array<string, string> $criteria
+     */
+    private function getPage($criteria): ?PageInterface
     {
-        if (\is_array($slug)) {
-            return Repository::getPageRepository($this->em, $this->entityClass)->findOneBy($slug);
+        if (\is_array($criteria)) {
+            return Repository::getPageRepository($this->em, $this->entityClass)->findOneBy($criteria);
         }
 
-        $pages = array_filter($this->getPages(), fn ($page): bool => $page->getSlug() == $slug);
+        $pages = array_filter($this->getPages(), fn ($page): bool => $page->getSlug() == $criteria);
         $pages = array_values($pages);
 
         return $pages[0] ?? null;
     }
 
-    private function getPages($cache = true): array
+    /**
+     * @return mixed[]|\Pushword\Core\Entity\PageInterface[]
+     */
+    private function getPages(bool $cache = true): array
     {
         if (true === $cache && $this->pages) {
             return $this->pages;

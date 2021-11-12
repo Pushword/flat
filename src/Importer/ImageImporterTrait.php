@@ -24,6 +24,9 @@ trait ImageImporterTrait
         $this->importImageMediaData($media, $filePath);
     }
 
+    /**
+     * @return mixed[]
+     */
     private function getImageData(string $filePath): array
     {
         $data = [];

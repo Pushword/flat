@@ -52,7 +52,7 @@ class MediaImporter extends AbstractImporter
         $this->importImage($filePath, $dateTime);
     }
 
-    private function isImage($filePath): bool
+    private function isImage(string $filePath): bool
     {
         return false !== getimagesize($filePath);
         //0 !== strpos(finfo_file(finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'image/') || preg_match('/\.webp$/', $filePath);
@@ -105,7 +105,10 @@ class MediaImporter extends AbstractImporter
         }
     }
 
-    private function getData($filePath): array
+    /**
+     * @return mixed[]
+     */
+    private function getData(string $filePath): array
     {
         if (! file_exists($filePath.'.json')) {
             return [];
@@ -121,7 +124,7 @@ class MediaImporter extends AbstractImporter
         return str_replace(\dirname($filePath).'/', '', $filePath);
     }
 
-    private function copyToMediaDir($filePath): string
+    private function copyToMediaDir(string $filePath): string
     {
         $newFilePath = $this->mediaDir.'/'.$this->getFilename($filePath);
 
