@@ -137,7 +137,7 @@ class MediaImporter extends AbstractImporter
         return $filePath;
     }
 
-    private function getMedia(string $media): ?MediaInterface
+    private function getMedia(string $media): object
     {
         $mediaEntity = Repository::getMediaRepository($this->em, $this->entityClass)->findOneBy(['media' => $media]);
         $this->newMedia = false;

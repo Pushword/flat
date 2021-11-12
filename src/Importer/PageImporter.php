@@ -37,10 +37,7 @@ class PageImporter extends AbstractImporter
         $this->mediaClass = $mediaClass;
     }
 
-    /**
-     * @return string
-     */
-    private function getContentDir()
+    private function getContentDir(): string
     {
         $host = $this->apps->get()->getMainHost();
 
@@ -142,10 +139,7 @@ class PageImporter extends AbstractImporter
         }
     }
 
-    /**
-     * @return string
-     */
-    private function normalizePropertyName(string $propertyName)
+    private function normalizePropertyName(string $propertyName): string
     {
         if ('parent' == $propertyName) {
             $propertyName = 'parentPage';
@@ -154,7 +148,7 @@ class PageImporter extends AbstractImporter
         return $propertyName;
     }
 
-    private function toAddAtTheEnd()
+    private function toAddAtTheEnd(): void
     {
         foreach ($this->toAddAtTheEnd as $slug => $data) {
             $page = $this->getPage($slug);
