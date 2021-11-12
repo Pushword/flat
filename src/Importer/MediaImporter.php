@@ -17,6 +17,9 @@ class MediaImporter extends AbstractImporter
 
     protected ?string $mediaDir = null;
 
+    /**
+     * @var string
+     */
     protected $projectDir;
 
     private bool $newMedia = false;

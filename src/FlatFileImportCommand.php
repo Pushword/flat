@@ -9,6 +9,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class FlatFileImportCommand extends Command
 {
+    /**
+     * @var string
+     */
     protected static $defaultName = 'pushword:flat:import';
 
     protected \Pushword\Flat\FlatFileImporter $importer;
