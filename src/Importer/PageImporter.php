@@ -46,7 +46,7 @@ class PageImporter extends AbstractImporter
 
     public function import(string $filePath, DateTimeInterface $dateTime): void
     {
-        if (0 !== strpos(finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'text/')) {
+        if (! str_starts_with(finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'text/')) {
             return;
         }
 
