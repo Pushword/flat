@@ -42,7 +42,9 @@ trait ImageImporterTrait
 
         $reader = \PHPExif\Reader\Reader::factory(\PHPExif\Reader\Reader::TYPE_NATIVE);
         $exif = $reader->read($filePath);
-        $data = array_merge($data, $exif->getData());
+        if ($exif) { // @phpstan-ignore-line
+            $data = array_merge($data, $exif->getData());
+        }
 
         return array_merge($data, $this->getData($filePath));
     }
