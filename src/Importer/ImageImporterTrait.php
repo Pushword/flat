@@ -11,7 +11,7 @@ use Pushword\Core\Entity\MediaInterface;
  */
 trait ImageImporterTrait
 {
-    abstract private function getMedia(string $media): MediaInterface;
+    abstract public function getMedia(string $media): MediaInterface;
 
     public function importImage(string $filePath, DateTimeInterface $dateTime): void
     {
@@ -42,7 +42,7 @@ trait ImageImporterTrait
 
         $reader = \PHPExif\Reader\Reader::factory(\PHPExif\Reader\Reader::TYPE_NATIVE);
         $exif = $reader->read($filePath);
-            $data = array_merge($data, $exif->getData());
+        $data = array_merge($data, $exif->getData());
 
         return array_merge($data, $this->getData($filePath));
     }
