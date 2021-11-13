@@ -11,7 +11,7 @@ use Pushword\Core\Entity\MediaInterface;
  */
 trait ImageImporterTrait
 {
-    abstract public function getMedia(string $media): MediaInterface;
+    abstract protected function getMedia(string $media): MediaInterface;
 
     public function importImage(string $filePath, DateTimeInterface $dateTime): void
     {
