@@ -3,8 +3,10 @@
 namespace Pushword\Flat;
 
 use DateTime;
+use LogicException;
 use Pushword\Core\Component\App\AppConfig;
 use Pushword\Core\Component\App\AppPool;
+use Pushword\Flat\Importer\AbstractImporter;
 use Pushword\Flat\Importer\MediaImporter;
 use Pushword\Flat\Importer\PageImporter;
 
@@ -47,7 +49,9 @@ class FlatFileImporter
 
     public function run(?string $host): void
     {
-        $this->app = $this->apps->switchCurrentApp($host)->get();
+        if (null !== $host) {
+            $this->app = $this->apps->switchCurrentApp($host)->get();
+        }
 
         $contentDir = $this->contentDirFinder->get($this->app->getMainHost());
 
@@ -71,7 +75,7 @@ class FlatFileImporter
         $this->mediaImporter->setMediaDir($dir);
     }
 
-    private function importFiles($dir, string $type): void
+    private function importFiles(string $dir, string $type): void
     {
         if (! file_exists($dir)) {
             return;
@@ -79,7 +83,7 @@ class FlatFileImporter
 
         $files = \Safe\scandir($dir);
         foreach ($files as $file) {
-            if (\in_array($file, ['.', '..'])) {
+            if (\in_array($file, ['.', '..'], true)) {
                 continue;
             }
 
@@ -93,12 +97,22 @@ class FlatFileImporter
         }
     }
 
-    private function importFile(string $filePath, string $type)
+    private function importFile(string $filePath, string $type): void
     {
         $dateTime = (new DateTime())->setTimestamp(\Safe\filemtime($filePath));
 
+        $this->getImporter($type)->import($filePath, $dateTime);
+    }
+
+    private function getImporter(string $type): AbstractImporter
+    {
         $importer = $type.'Importer';
 
-        return $this->$importer->import($filePath, $dateTime);
+        if (! property_exists($this, $importer)
+            || ! ($importer = $this->$importer) instanceof AbstractImporter) { // @phpstan-ignore-line
+            throw new LogicException();
+        }
+
+        return $importer;
     }
 }

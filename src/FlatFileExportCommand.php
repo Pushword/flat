@@ -10,7 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class FlatFileExportCommand extends Command
 {
     /**
-     * @var string
+     * @noRector
      */
     protected static $defaultName = 'pushword:flat:export';
 
@@ -35,13 +35,13 @@ class FlatFileExportCommand extends Command
     {
         $output->writeln('Import will start in few seconds...');
 
-        if ($input->getArgument('exportDir')) {
-            $this->exporter->setExportDir($input->getArgument('exportDir'));
+        if ('' !== $input->getArgument('exportDir')) {
+            $this->exporter->setExportDir($input->getArgument('exportDir')); // @phpstan-ignore-line
         }
 
         $exportDir = $this->exporter->run($input->getArgument('host'));
 
-        if (! $input->getArgument('exportDir')) {
+        if ('' !== $input->getArgument('exportDir')) {
             $output->writeln('Results:');
             $output->writeln($exportDir);
         }

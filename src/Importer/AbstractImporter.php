@@ -8,9 +8,14 @@ use Pushword\Core\Component\App\AppPool;
 
 /**
  * Permit to find error in image or link.
+ *
+ * @template T of object
  */
 abstract class AbstractImporter
 {
+    /**
+     * @var class-string<T>
+     */
     protected string $entityClass;
 
     protected \Doctrine\ORM\EntityManagerInterface $em;
@@ -27,7 +32,7 @@ abstract class AbstractImporter
         $this->em = $entityManager;
     }
 
-    abstract public function import(string $filePath, DateTimeInterface $dateTime);
+    abstract public function import(string $filePath, DateTimeInterface $dateTime): void;
 
     public function finishImport(): void
     {

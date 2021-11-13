@@ -31,8 +31,14 @@ class FlatFileExporter
 
     protected string $exportDir = '';
 
+    /**
+     * @var class-string<MediaInterface>
+     */
     protected string $mediaClass;
 
+    /**
+     * @var class-string<PageInterface>
+     */
     protected string $pageClass;
 
     protected FlatFileContentDirFinder $contentDirFinder;
@@ -45,6 +51,10 @@ class FlatFileExporter
 
     protected Filesystem $filesystem;
 
+    /**
+     * @param class-string<PageInterface>  $pageClass
+     * @param class-string<MediaInterface> $mediaClass
+     */
     public function __construct(
         string $projectDir,
         string $mediaDir,
@@ -77,9 +87,12 @@ class FlatFileExporter
 
     public function run(?string $host): string
     {
-        $this->app = $this->apps->switchCurrentApp($host)->get();
+        if (null !== $host) {
+            $this->app = $this->apps->switchCurrentApp($host)->get();
+        }
 
-        $this->exportDir = $this->exportDir ?: ($this->contentDirFinder->has($this->app->getMainHost())
+        $this->exportDir = '' !== $this->exportDir ? $this->exportDir
+            : ($this->contentDirFinder->has($this->app->getMainHost())
                 ? $this->contentDirFinder->get($this->app->getMainHost())
                 : $this->projectDir.'/var/export/'.uniqid());
 
@@ -105,14 +118,14 @@ class FlatFileExporter
 
         $data = [];
         foreach ($properties as $property) {
-            if (\in_array($property, ['mainContent', 'id'])) {
+            if (\in_array($property, ['mainContent', 'id'], true)) {
                 continue;
             }
 
             $getter = 'get'.ucfirst($property);
-            $value = $page->$getter();
+            $value = $page->$getter(); // @phpstan-ignore-line
             if (null === $value
-            || ('customProperties' == $property && empty($value))) {
+            || ('customProperties' == $property && empty($value))) { // @phpstan-ignore-line
                 continue;
             }
 
@@ -146,7 +159,7 @@ class FlatFileExporter
             }
 
             $getter = 'get'.ucfirst($property);
-            $data[$property] = $media->$getter();
+            $data[$property] = $media->$getter(); // @phpstan-ignore-line
         }
 
         if ('' !== $this->copyMedia && '0' !== $this->copyMedia) {

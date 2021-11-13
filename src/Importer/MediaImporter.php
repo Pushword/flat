@@ -10,6 +10,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Permit to find error in image or link.
+ *
+ * @extends AbstractImporter<MediaInterface>
  */
 class MediaImporter extends AbstractImporter
 {
@@ -131,7 +133,7 @@ class MediaImporter extends AbstractImporter
     {
         $newFilePath = $this->mediaDir.'/'.$this->getFilename($filePath);
 
-        if ($this->mediaDir && $filePath != $newFilePath) {
+        if (null !== $this->mediaDir && $filePath != $newFilePath) {
             (new Filesystem())->copy($filePath, $newFilePath);
 
             return $newFilePath;
@@ -140,7 +142,7 @@ class MediaImporter extends AbstractImporter
         return $filePath;
     }
 
-    private function getMedia(string $media): object
+    private function getMedia(string $media): MediaInterface
     {
         $mediaEntity = Repository::getMediaRepository($this->em, $this->entityClass)->findOneBy(['media' => $media]);
         $this->newMedia = false;

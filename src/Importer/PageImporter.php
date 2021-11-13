@@ -246,7 +246,7 @@ class PageImporter extends AbstractImporter
      */
     private function getPages(bool $cache = true): array
     {
-        if (true === $cache && $this->pages) {
+        if ($cache && $this->pages) {
             return $this->pages;
         }
 

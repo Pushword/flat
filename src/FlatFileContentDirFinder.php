@@ -14,6 +14,9 @@ class FlatFileContentDirFinder
 
     protected string $projectDir;
 
+    /**
+     * @var array<string, string>
+     */
     protected array $contentDir = [];
 
     public function __construct(
@@ -33,7 +36,7 @@ class FlatFileContentDirFinder
         $app = $this->apps->get($host);
 
         $dir = $app->get('flat_content_dir');
-        if (! $dir) {
+        if ('' === $dir || ! \is_string($dir)) {
             throw new Exception('No `flat_content_dir` dir in `'.$app->getMainHost().'`\'s params.');
         }
 
@@ -49,7 +52,7 @@ class FlatFileContentDirFinder
     public function has(string $host): bool
     {
         if (isset($this->contentDir[$host])) {
-            return $this->contentDir[$host];
+            return (bool) $this->contentDir[$host];
         }
 
         $app = $this->apps->get($host);
