@@ -193,6 +193,7 @@ class PageImporter extends AbstractImporter
                     if (! \is_string($value)) {
                         throw new LogicException();
                     }
+
                     $mediaName = F::preg_replace_str('@^/?media/(default)?/@', '', $value);
                     $media = $this->getMedia($mediaName);
                     if (null === $media) {
@@ -237,7 +238,7 @@ class PageImporter extends AbstractImporter
      *
      * @return array<string, (string|class-string)>
      */
-    private function getObjectRequiredProperties()
+    private function getObjectRequiredProperties(): array
     {
         $properties = [
             'extendedPage' => PageInterface::class,
