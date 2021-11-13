@@ -77,13 +77,16 @@ class MediaImporter extends AbstractImporter
             ->setProjectDir($this->projectDir)
             ->setStoreIn(\dirname($filePath))
             ->setSize(\Safe\filesize($filePath))
-            ->setMimeType(finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath));
+            ->setMimeType((string) finfo_file(\Safe\finfo_open(\FILEINFO_MIME_TYPE), $filePath));
 
         $data = $this->getData($filePath);
 
         $this->setData($media, $data);
     }
 
+    /**
+     * @param array<mixed> $data
+     */
     private function setData(MediaInterface $media, array $data): void
     {
         $media->setCustomProperties([]);
@@ -93,11 +96,12 @@ class MediaImporter extends AbstractImporter
 
             $setter = 'set'.ucfirst($key);
             if (method_exists($media, $setter)) {
-                if (\in_array($key, ['createdAt', 'updatedAt'])) {
+                if (\in_array($key, ['createdAt', 'updatedAt'], true)
+                    && \is_array($value) && isset($value['date'])) {
                     $value = new DateTime($value['date']);
                 }
 
-                $media->$setter($value);
+                $media->$setter($value); // @phpstan-ignore-line
 
                 continue;
             }
@@ -124,7 +128,7 @@ class MediaImporter extends AbstractImporter
         return \is_array($jsonData) ? $jsonData : [];
     }
 
-    public function getFilename($filePath): string
+    public function getFilename(string $filePath): string
     {
         return str_replace(\dirname($filePath).'/', '', $filePath);
     }

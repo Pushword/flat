@@ -12,6 +12,8 @@ use Pushword\Flat\Importer\PageImporter;
 
 /**
  * Permit to find error in image or link.
+ *
+ * @template T of object
  */
 class FlatFileImporter
 {
@@ -104,6 +106,11 @@ class FlatFileImporter
         $this->getImporter($type)->import($filePath, $dateTime);
     }
 
+    /**
+     * @return AbstractImporter<T>
+     * @psalm-suppress InvalidReturnStatement
+     * @psalm-suppress InvalidReturnType
+     */
     private function getImporter(string $type): AbstractImporter
     {
         $importer = $type.'Importer';

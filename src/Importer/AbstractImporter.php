@@ -22,6 +22,9 @@ abstract class AbstractImporter
 
     protected \Pushword\Core\Component\App\AppPool $apps;
 
+    /**
+     * @param class-string<T> $entityClass
+     */
     public function __construct(
         EntityManagerInterface $entityManager,
         AppPool $appPool,

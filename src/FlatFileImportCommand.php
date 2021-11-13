@@ -7,6 +7,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @template T of object
+ */
 class FlatFileImportCommand extends Command
 {
     /**
@@ -14,8 +17,14 @@ class FlatFileImportCommand extends Command
      */
     protected static $defaultName = 'pushword:flat:import';
 
+    /**
+     * @var FlatFileImporter<T>
+     */
     protected \Pushword\Flat\FlatFileImporter $importer;
 
+    /**
+     * @param FlatFileImporter<T> $flatFileImporter
+     */
     public function __construct(
         FlatFileImporter $flatFileImporter
     ) {
