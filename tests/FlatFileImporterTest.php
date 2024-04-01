@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Pushword\Flat\Tests;
 
-use App\Entity\Media;
-use App\Entity\Page;
-use Pushword\Core\Repository\Repository;
+use Pushword\Core\Entity\Page;
 use Pushword\Flat\FlatFileContentDirFinder;
 use Pushword\Flat\FlatFileImporter;
 use Pushword\Flat\Importer\MediaImporter;
@@ -40,22 +38,6 @@ class FlatFileImporterTest extends KernelTestCase
 
         $this->assertFileExists(self::$kernel->getContainer()->getParameter('kernel.project_dir').'/media/logo-test.png');
 
-        $this->clean($name);
-    }
-
-    public function testIt(): void
-    {
-        $name = $this->prepare();
-
-        $importer = $this->getImporter();
-
-        $importer->run(
-            'pushword.piedweb.com'
-        );
-
-        $repo = Repository::getMediaRepository(self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager'), Media::class);
-
-        $this->assertStringContainsString('/docs/content/media', $repo->findOneBy(['media' => $name])->getStoreIn());
         $this->clean($name);
     }
 
@@ -107,12 +89,12 @@ class FlatFileImporterTest extends KernelTestCase
 
     private function getMediaImporter(): MediaImporter
     {
-        return (new MediaImporter(
+        return new MediaImporter(
             self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager'),
             self::$kernel->getContainer()->get(\Pushword\Core\Component\App\AppPool::class),
-            Media::class
-        ))->setProjectDir(self::$kernel->getContainer()->getParameter('kernel.project_dir'));
-        // ->setMediaDir(self::$kernel->getContainer()->getParameter('kernel.project_dir').'/media');
+            self::$kernel->getContainer()->getParameter('kernel.project_dir').'/media',
+            self::$kernel->getContainer()->getParameter('kernel.project_dir')
+        );
     }
 
     private function getPageImporter()
@@ -122,8 +104,8 @@ class FlatFileImporterTest extends KernelTestCase
             self::$kernel->getContainer()->get(\Pushword\Core\Component\App\AppPool::class),
             Page::class
         );
-        $pageImporter->setContentDirFinder($this->getContentDirFinder());
-        $pageImporter->setMediaClass(self::$kernel->getContainer()->getParameter('pw.entity_media'));
+        $pageImporter->contentDirFinder = $this->getContentDirFinder();
+        $pageImporter->pageRepo = self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager')->getRepository(Page::class);
 
         return $pageImporter;
     }

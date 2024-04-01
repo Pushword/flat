@@ -18,6 +18,7 @@ use function Safe\scandir;
  */
 class FlatFileImporter
 {
+    /** @psalm-suppress PropertyNotSetInConstructor */
     protected AppConfig $app;
 
     protected string $customMediaDir = '';
@@ -51,7 +52,7 @@ class FlatFileImporter
 
     public function setMediaDir(string $dir): void
     {
-        $this->mediaImporter->setMediaDir($dir);
+        $this->mediaImporter->mediaDir = $dir;
     }
 
     private function importFiles(string $dir, string $type): void
@@ -60,6 +61,7 @@ class FlatFileImporter
             return;
         }
 
+        /** @var string[] */
         $files = scandir($dir);
         foreach ($files as $file) {
             if (\in_array($file, ['.', '..'], true)) {

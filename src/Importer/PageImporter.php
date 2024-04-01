@@ -3,70 +3,48 @@
 namespace Pushword\Flat\Importer;
 
 use Exception;
-use Pushword\Core\Entity\MediaInterface;
+use Pushword\Core\Entity\Media;
 use Pushword\Core\Entity\Page;
-use Pushword\Core\Entity\PageInterface;
-use Pushword\Core\Repository\Repository;
-use Pushword\Core\Utils\F;
+use Pushword\Core\Repository\PageRepository;
 use Pushword\Flat\FlatFileContentDirFinder;
 
 use function Safe\file_get_contents;
 
 use Spatie\YamlFrontMatter\YamlFrontMatter;
+use Symfony\Contracts\Service\Attribute\Required;
 
 /**
  * Permit to find error in image or link.
  *
- * @extends AbstractImporter<PageInterface>
+ * @extends AbstractImporter<Page>
  */
 class PageImporter extends AbstractImporter
 {
     /**
-     * @var PageInterface[]|null
+     * @var Page[]|null
      */
     protected ?array $pages = null;
 
     /**
-     * @var array<string, array<mixed>>
+     * @var array<string, array<string, mixed>>
      */
     protected array $toAddAtTheEnd = [];
 
-    protected ?FlatFileContentDirFinder $contentDirFinder = null;
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    #[Required]
+    public FlatFileContentDirFinder $contentDirFinder;
 
-    /**
-     * @var class-string<MediaInterface>
-     */
-    protected string $mediaClass;
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    #[Required]
+    public PageRepository $pageRepo;
 
     private bool $newPage = false;
-
-    public function getContentDirFinder(): FlatFileContentDirFinder
-    {
-        if (null === $this->contentDirFinder) {
-            throw new \LogicException();
-        }
-
-        return $this->contentDirFinder;
-    }
-
-    public function setContentDirFinder(FlatFileContentDirFinder $flatFileContentDirFinder): void
-    {
-        $this->contentDirFinder = $flatFileContentDirFinder;
-    }
-
-    /**
-     * @param class-string<MediaInterface> $mediaClass
-     */
-    public function setMediaClass(string $mediaClass): void
-    {
-        $this->mediaClass = $mediaClass;
-    }
 
     private function getContentDir(): string
     {
         $host = $this->apps->get()->getMainHost();
 
-        return $this->getContentDirFinder()->get($host);
+        return $this->contentDirFinder->get($host);
     }
 
     public function import(string $filePath, \DateTimeInterface $lastEditDateTime): void
@@ -78,37 +56,40 @@ class PageImporter extends AbstractImporter
         $content = file_get_contents($filePath);
         $document = YamlFrontMatter::parse($content);
 
-        if (empty($document->matter())) { // @phpstan-ignore-line
+        if ([] === $document->matter()) {
             return; // throw new Exception('No content found in `'.$filePath.'`');
         }
 
         $slug = $document->matter('slug') ?? $this->filePathToSlug($filePath);
+        $slug = \is_string($slug) ? $slug : throw new \Exception();
 
-        $this->editPage($slug, $document->matter(), $document->body(), $lastEditDateTime);
+        $data = $document->matter();
+        $data = \is_array($data) ? $data : throw new \Exception();
+        /** @var array<string, mixed> $data */
+        $this->editPage($slug, $data, $document->body(), $lastEditDateTime);
     }
 
     private function filePathToSlug(string $filePath): string
     {
-        $slug = F::preg_replace_str('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath));
+        $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath)) ?? throw new \Exception();
 
         if ('index' == $slug) {
             $slug = 'homepage';
-        } elseif ('index' == basename($slug)) {
+        } elseif ('index' === basename($slug)) {
             $slug = substr($slug, 0, -\strlen('index'));
         }
 
         return Page::normalizeSlug($slug);
     }
 
-    private function getPageFromSlug(string $slug): PageInterface
+    private function getPageFromSlug(string $slug): Page
     {
         $page = $this->getPage($slug);
         $this->newPage = false;
 
-        if (! $page instanceof PageInterface) {
-            $pageClass = $this->entityClass;
+        if (! $page instanceof Page) {
             $initDateTimeProperties = false;
-            $page = new $pageClass($initDateTimeProperties);
+            $page = new Page($initDateTimeProperties);
             $this->newPage = true;
         }
 
@@ -116,9 +97,9 @@ class PageImporter extends AbstractImporter
     }
 
     /**
-     * @param mixed[] $data
+     * @param array<string, mixed> $data
      */
-    private function editPage(string $slug, array $data, string $content, \DateTime|\DateTimeImmutable $lastEditDateTime): void
+    private function editPage(string $slug, array $data, string $content, \DateTime|\DateTimeImmutable|\DateTimeInterface $lastEditDateTime): void
     {
         $page = $this->getPageFromSlug($slug);
 
@@ -166,7 +147,7 @@ class PageImporter extends AbstractImporter
         }
     }
 
-    private function initDateTimeProperties(PageInterface $page, \DateTimeInterface $lastEditDateTime): void
+    private function initDateTimeProperties(Page $page, \DateTimeInterface $lastEditDateTime): void
     {
         if (null === $page->getPublishedAt(false)) {
             $page->setPublishedAt($lastEditDateTime);
@@ -183,7 +164,7 @@ class PageImporter extends AbstractImporter
 
     private function normalizePropertyName(string $propertyName): string
     {
-        if ('parent' == $propertyName) {
+        if ('parent' === $propertyName) {
             return 'parentPage';
         }
 
@@ -197,22 +178,23 @@ class PageImporter extends AbstractImporter
             foreach ($data as $property => $value) {
                 $object = $this->getObjectRequiredProperty($property);
 
-                if (PageInterface::class === $object) {
+                if (Page::class === $object) {
                     $setter = 'set'.ucfirst($property);
-                    $page->$setter($this->getPage($value)); // @phpstan-ignore-line
+                    /** @phpstan-ignore-next-line */
+                    $page->$setter($this->getPage($value));
 
                     continue;
                 }
 
-                if (MediaInterface::class === $object) {
+                if (Media::class === $object) {
                     $setter = 'set'.ucfirst($property);
                     if (! \is_string($value)) {
                         throw new \LogicException();
                     }
 
-                    $mediaName = F::preg_replace_str('@^/?media/(default)?/@', '', $value);
+                    $mediaName = preg_replace('@^/?media/(default)?/@', '', $value) ?? throw new \Exception();
                     $media = $this->getMedia($mediaName);
-                    if (! $media instanceof MediaInterface) {
+                    if (! $media instanceof Media) {
                         throw new \Exception('Media `'.$value.'` ('.$mediaName.') not found in `'.$slug.'`.');
                     }
 
@@ -229,7 +211,7 @@ class PageImporter extends AbstractImporter
     /**
      * @param string[] $pages
      */
-    private function addPages(PageInterface $page, string $property, array $pages): void
+    private function addPages(Page $page, string $property, array $pages): void
     {
         $setter = 'set'.ucfirst($property);
         $this->$setter([]); // @phpstan-ignore-line
@@ -252,15 +234,15 @@ class PageImporter extends AbstractImporter
     /**
      * Todo, get them automatically.
      *
-     * @return array{extendedPage: class-string<PageInterface>, parentPage: class-string<PageInterface>, translations: string, mainImage: class-string<MediaInterface>}
+     * @return array{extendedPage: class-string<Page>, parentPage: class-string<Page>, translations: string, mainImage: class-string<Media>}
      */
     private function getObjectRequiredProperties(): array
     {
         return [
-            'extendedPage' => PageInterface::class,
-            'parentPage' => PageInterface::class,
+            'extendedPage' => Page::class,
+            'parentPage' => Page::class,
             'translations' => 'addPages',
-            'mainImage' => MediaInterface::class,
+            'mainImage' => Media::class,
         ];
     }
 
@@ -274,28 +256,29 @@ class PageImporter extends AbstractImporter
         return $properties[$key];
     }
 
-    private function getMedia(string $media): ?MediaInterface
+    private function getMedia(string $media): ?Media
     {
-        return Repository::getMediaRepository($this->em, $this->mediaClass)->findOneBy(['media' => $media]);
+        return $this->em->getRepository(Media::class)->findOneBy(['media' => $media]);
     }
 
-    /**
-     * @param string|array<string, string> $criteria
-     */
-    private function getPage(array|string $criteria): ?PageInterface
+    private function getPage(mixed $criteria): ?Page
     {
         if (\is_array($criteria)) {
-            return Repository::getPageRepository($this->em, $this->entityClass)->findOneBy($criteria);
+            return $this->em->getRepository(Page::class)->findOneBy($criteria);
         }
 
-        $pages = array_filter($this->getPages(), static fn (PageInterface $page): bool => $page->getSlug() === $criteria);
+        if (! \is_string($criteria)) {
+            throw new \Exception();
+        }
+
+        $pages = array_filter($this->getPages(), static fn (Page $page): bool => $page->getSlug() === $criteria);
         $pages = array_values($pages);
 
         return $pages[0] ?? null;
     }
 
     /**
-     * @return PageInterface[]
+     * @return Page[]
      */
     private function getPages(bool $cache = true): array
     {
@@ -303,8 +286,6 @@ class PageImporter extends AbstractImporter
             return $this->pages;
         }
 
-        $repo = Repository::getPageRepository($this->em, $this->entityClass);
-
-        return $this->pages = $repo->findByHost($this->apps->get()->getMainHost());
+        return $this->pages = $this->pageRepo->findByHost($this->apps->get()->getMainHost());
     }
 }

@@ -12,10 +12,7 @@ use Pushword\Core\Component\App\AppPool;
  */
 abstract class AbstractImporter
 {
-    /**
-     * @param class-string<T> $entityClass
-     */
-    public function __construct(protected EntityManagerInterface $em, protected AppPool $apps, protected string $entityClass)
+    public function __construct(protected EntityManagerInterface $em, protected AppPool $apps)
     {
     }
 

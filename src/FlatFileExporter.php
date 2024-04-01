@@ -2,12 +2,12 @@
 
 namespace Pushword\Flat;
 
-use Doctrine\ORM\EntityManagerInterface;
 use Pushword\Core\Component\App\AppConfig;
 use Pushword\Core\Component\App\AppPool;
-use Pushword\Core\Entity\MediaInterface;
-use Pushword\Core\Entity\PageInterface;
-use Pushword\Core\Repository\Repository;
+use Pushword\Core\Entity\Media;
+use Pushword\Core\Entity\Page;
+use Pushword\Core\Repository\MediaRepository;
+use Pushword\Core\Repository\PageRepository;
 use Pushword\Core\Utils\Entity;
 use Pushword\Flat\Importer\MediaImporter;
 use Pushword\Flat\Importer\PageImporter;
@@ -22,6 +22,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 class FlatFileExporter
 {
+    /** @psalm-suppress PropertyNotSetInConstructor */
     protected AppConfig $app;
 
     protected string $copyMedia = '';
@@ -30,20 +31,15 @@ class FlatFileExporter
 
     protected Filesystem $filesystem;
 
-    /**
-     * @param class-string<PageInterface>  $pageClass
-     * @param class-string<MediaInterface> $mediaClass
-     */
     public function __construct(
         protected string $projectDir,
         protected string $mediaDir,
-        protected string $pageClass,
-        protected string $mediaClass,
         protected AppPool $apps,
-        protected EntityManagerInterface $entityManager,
         protected FlatFileContentDirFinder $contentDirFinder,
         protected PageImporter $pageImporter,
-        protected MediaImporter $mediaImporter
+        protected MediaImporter $mediaImporter,
+        protected PageRepository $pageRepo,
+        protected MediaRepository $mediaRepo,
     ) {
         $this->filesystem = new Filesystem();
     }
@@ -74,15 +70,14 @@ class FlatFileExporter
 
     private function exportPages(): void
     {
-        $repo = Repository::getPageRepository($this->entityManager, $this->pageClass);
-        $pages = $repo->findByHost($this->apps->get()->getMainHost());
+        $pages = $this->pageRepo->findByHost($this->apps->get()->getMainHost());
 
         foreach ($pages as $page) {
             $this->exportPage($page);
         }
     }
 
-    private function exportPage(PageInterface $page): void
+    private function exportPage(Page $page): void
     {
         $properties = Entity::getProperties($page);
 
@@ -113,15 +108,14 @@ class FlatFileExporter
 
     private function exportMedias(): void
     {
-        $mediaRepository = Repository::getMediaRepository($this->entityManager, $this->mediaClass);
-        $medias = $mediaRepository->findAll();
+        $medias = $this->mediaRepo->findAll();
 
         foreach ($medias as $media) {
             $this->exportMedia($media);
         }
     }
 
-    private function exportMedia(MediaInterface $media): void
+    private function exportMedia(Media $media): void
     {
         $properties = Entity::getProperties($media);
 
