@@ -2,8 +2,6 @@
 
 namespace Pushword\Flat;
 
-use DateTime;
-use LogicException;
 use Pushword\Core\Component\App\AppConfig;
 use Pushword\Core\Component\App\AppPool;
 use Pushword\Flat\Importer\AbstractImporter;
@@ -20,7 +18,6 @@ use function Safe\scandir;
  */
 class FlatFileImporter
 {
-    /** @psalm-suppress PropertyNotSetInConstructor */
     protected AppConfig $app;
 
     protected string $customMediaDir = '';
@@ -54,7 +51,7 @@ class FlatFileImporter
 
     public function setMediaDir(string $dir): void
     {
-        $this->mediaImporter->mediaDir = $dir;
+        $this->mediaImporter->setMediaDir($dir);
     }
 
     private function importFiles(string $dir, string $type): void
@@ -63,7 +60,6 @@ class FlatFileImporter
             return;
         }
 
-        /** @var string[] */
         $files = scandir($dir);
         foreach ($files as $file) {
             if (\in_array($file, ['.', '..'], true)) {
@@ -82,7 +78,7 @@ class FlatFileImporter
 
     private function importFile(string $filePath, string $type): void
     {
-        $lastEditDateTime = (new DateTime())->setTimestamp(filemtime($filePath));
+        $lastEditDateTime = (new \DateTime())->setTimestamp(filemtime($filePath));
 
         $this->getImporter($type)->import($filePath, $lastEditDateTime);
     }
@@ -99,7 +95,7 @@ class FlatFileImporter
 
         if (! property_exists($this, $importer)
             || ! ($importer = $this->$importer) instanceof AbstractImporter) { // @phpstan-ignore-line
-            throw new LogicException();
+            throw new \LogicException();
         }
 
         return $importer;

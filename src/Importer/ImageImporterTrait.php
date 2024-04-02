@@ -3,8 +3,8 @@
 namespace Pushword\Flat\Importer;
 
 // use iBudasov\Iptc\Manager as Iptc;
-use DateTimeInterface;
-use Pushword\Core\Entity\Media;
+use PHPExif\Reader\Reader;
+use Pushword\Core\Entity\MediaInterface;
 
 use function Safe\filesize;
 use function Safe\getimagesize;
@@ -14,12 +14,9 @@ use function Safe\getimagesize;
  */
 trait ImageImporterTrait
 {
-    /** @return mixed[] */
-    abstract private function getData(string $filePath): array;
+    abstract protected function getMedia(string $media): MediaInterface;
 
-    abstract protected function getMedia(string $media): Media;
-
-    public function importImage(string $filePath, DateTimeInterface $dateTime): void
+    public function importImage(string $filePath, \DateTimeInterface $dateTime): void
     {
         $media = $this->getMedia($this->getFilename($filePath));
 
@@ -37,6 +34,8 @@ trait ImageImporterTrait
      */
     private function getImageData(string $filePath): array
     {
+        $data = [];
+
         /*
         if ('image/jpeg' == $mime) {
             $manager = Iptc::create();
@@ -44,15 +43,17 @@ trait ImageImporterTrait
             $data = array_merge($data, $manager->getTags());
         }*/
 
-        $data = @exif_read_data($filePath);
-        $data = false === $data ? [] : $data;
+        $reader = Reader::factory(Reader::TYPE_NATIVE);
+        $exif = $reader->read($filePath);
+        if ($exif) { // @phpstan-ignore-line
+            $data = array_merge($data, $exif->getData());
+        }
 
         return array_merge($data, $this->getData($filePath));
     }
 
-    private function importImageMediaData(Media $media, string $filePath): void
+    private function importImageMediaData(MediaInterface $media, string $filePath): void
     {
-        /** @var array{'mime': string, 0:int, 1: int} */
         $imgSize = getimagesize($filePath);
 
         $media

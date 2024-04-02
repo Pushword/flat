@@ -2,9 +2,7 @@
 
 namespace Pushword\Flat\Importer;
 
-use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
-use Exception;
 use Pushword\Core\Component\App\AppPool;
 
 /**
@@ -14,11 +12,14 @@ use Pushword\Core\Component\App\AppPool;
  */
 abstract class AbstractImporter
 {
-    public function __construct(protected EntityManagerInterface $em, protected AppPool $apps)
+    /**
+     * @param class-string<T> $entityClass
+     */
+    public function __construct(protected EntityManagerInterface $em, protected AppPool $apps, protected string $entityClass)
     {
     }
 
-    abstract public function import(string $filePath, DateTimeInterface $lastEditDateTime): void;
+    abstract public function import(string $filePath, \DateTimeInterface $lastEditDateTime): void;
 
     public function finishImport(): void
     {
@@ -36,7 +37,7 @@ abstract class AbstractImporter
     {
         $finfo = finfo_open(\FILEINFO_MIME_TYPE);
         if (false === $finfo) {
-            throw new Exception('finfo is not working');
+            throw new \Exception('finfo is not working');
         }
 
         return (string) finfo_file($finfo, $filePath);

@@ -1,0 +1,46 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    bind:
+      $projectDir: "%kernel.project_dir%"
+      $mediaDir: "%pw.media_dir%"
+      $pageClass: "%pw.entity_page%"
+      $mediaClass: "%pw.entity_media%"
+
+  Pushword\Flat\FlatFileImporter:
+    alias: pushword.flat.importer
+
+  pushword.flat.importer:
+    class: Pushword\Flat\FlatFileImporter
+
+  Pushword\Flat\FlatFileExporter:
+    alias: pushword.flat.exporter
+
+  pushword.flat.exporter:
+    class: Pushword\Flat\FlatFileExporter
+
+  Pushword\Flat\FlatFileImportCommand:
+    arguments:
+    tags: ["console.command"]
+
+  Pushword\Flat\FlatFileExportCommand:
+    arguments:
+    tags: ["console.command"]
+
+  Pushword\Flat\FlatFileContentDirFinder:
+    alias: pushword.flat.content_dir_finder
+
+  pushword.flat.content_dir_finder:
+    class: Pushword\Flat\FlatFileContentDirFinder
+
+  Pushword\Flat\Importer\PageImporter:
+    arguments:
+      $entityClass: "%pw.entity_page%"
+    calls:
+      - [setContentDirFinder, ["@pushword.flat.content_dir_finder"]]
+      - [setMediaClass, ["%pw.entity_media%"]]
+
+  Pushword\Flat\Importer\MediaImporter:
+    arguments:
+      $entityClass: "%pw.entity_media%"
