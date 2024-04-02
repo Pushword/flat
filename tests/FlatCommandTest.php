@@ -6,9 +6,9 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class CommandTest extends KernelTestCase
+class FlatCommandTest extends KernelTestCase
 {
-    public function testImport()
+    public function testImport(): void
     {
         $kernel = static::createKernel();
         $application = new Application($kernel);
@@ -21,7 +21,7 @@ class CommandTest extends KernelTestCase
 
         // the output of the command in the console
         $output = $commandTester->getDisplay();
-        $this->assertTrue(str_contains($output, 'ended'));
+        self::assertTrue(str_contains($output, 'ended'));
 
         $exportDir = $kernel->getCacheDir().'/test-exporter';
 
@@ -32,7 +32,7 @@ class CommandTest extends KernelTestCase
             'exportDir' => $exportDir,
         ]);
 
-        $this->assertFileExists($exportDir.'/homepage.md');
-        $this->assertFileExists($exportDir.'/installation.md');
+        self::assertFileExists($exportDir.'/homepage.md');
+        self::assertFileExists($exportDir.'/installation.md');
     }
 }

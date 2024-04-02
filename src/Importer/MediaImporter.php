@@ -2,51 +2,39 @@
 
 namespace Pushword\Flat\Importer;
 
-use Pushword\Core\Entity\MediaInterface;
-use Pushword\Core\Repository\Repository;
+use DateTime;
+use DateTimeInterface;
+use Doctrine\ORM\EntityManagerInterface;
+use Pushword\Core\Component\App\AppPool;
+use Pushword\Core\Entity\Media;
 
 use function Safe\file_get_contents;
 use function Safe\filesize;
 use function Safe\json_decode;
 
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Contracts\Service\Attribute\Required;
 
 /**
  * Permit to find error in image or link.
  *
- * @extends AbstractImporter<MediaInterface>
+ * @extends AbstractImporter<Media>
  */
 class MediaImporter extends AbstractImporter
 {
     use ImageImporterTrait;
 
-    protected ?string $mediaDir = null;
-
-    /**
-     * @var string
-     */
-    protected $projectDir;
+    public function __construct(
+        protected EntityManagerInterface $em,
+        protected AppPool $apps,
+        public string $mediaDir,
+        public string $projectDir
+    ) {
+        parent::__construct($em, $apps);
+    }
 
     private bool $newMedia = false;
 
-    #[Required]
-    public function setMediaDir(string $mediaDir): self
-    {
-        $this->mediaDir = $mediaDir;
-
-        return $this;
-    }
-
-    #[Required]
-    public function setProjectDir(string $projectDir): self
-    {
-        $this->projectDir = $projectDir;
-
-        return $this;
-    }
-
-    public function import(string $filePath, \DateTimeInterface $lastEditDateTime): void
+    public function import(string $filePath, DateTimeInterface $lastEditDateTime): void
     {
         if (! $this->isImage($filePath)) {
             if (str_ends_with($filePath, '.json') && file_exists(substr($filePath, 0, -5))) { // data file
@@ -67,7 +55,7 @@ class MediaImporter extends AbstractImporter
         // 0 !== strpos(finfo_file(finfo_open(\FILEINFO_MIME_TYPE), $filePath), 'image/') || preg_match('/\.webp$/', $filePath);
     }
 
-    public function importMedia(string $filePath, \DateTimeInterface $dateTime): void
+    public function importMedia(string $filePath, DateTimeInterface $dateTime): void
     {
         $media = $this->getMedia($this->getFilename($filePath));
 
@@ -91,18 +79,18 @@ class MediaImporter extends AbstractImporter
     /**
      * @param array<mixed> $data
      */
-    private function setData(MediaInterface $media, array $data): void
+    private function setData(Media $media, array $data): void
     {
         $media->setCustomProperties([]);
 
         foreach ($data as $key => $value) {
-            $key = self::underscoreToCamelCase($key);
+            $key = self::underscoreToCamelCase((string) $key);
 
             $setter = 'set'.ucfirst($key);
             if (method_exists($media, $setter)) {
                 if (\in_array($key, ['createdAt', 'updatedAt'], true)
-                    && \is_array($value) && isset($value['date'])) {
-                    $value = new \DateTime($value['date']);
+                    && \is_array($value) && isset($value['date']) && \is_string($value['date'])) {
+                    $value = new DateTime($value['date']);
                 }
 
                 $media->$setter($value); // @phpstan-ignore-line
@@ -118,9 +106,7 @@ class MediaImporter extends AbstractImporter
         }
     }
 
-    /**
-     * @return mixed[]
-     */
+    /** @return array<string|int, mixed> */
     private function getData(string $filePath): array
     {
         if (! file_exists($filePath.'.json')) {
@@ -141,7 +127,7 @@ class MediaImporter extends AbstractImporter
     {
         $newFilePath = $this->mediaDir.'/'.$this->getFilename($filePath);
 
-        if (null !== $this->mediaDir && $filePath !== $newFilePath) {
+        if ('' !== $this->mediaDir && $filePath !== $newFilePath) {
             (new Filesystem())->copy($filePath, $newFilePath);
 
             return $newFilePath;
@@ -150,15 +136,14 @@ class MediaImporter extends AbstractImporter
         return $filePath;
     }
 
-    protected function getMedia(string $media): MediaInterface
+    protected function getMedia(string $media): Media
     {
-        $mediaEntity = Repository::getMediaRepository($this->em, $this->entityClass)->findOneBy(['media' => $media]);
+        $mediaEntity = $this->em->getRepository(Media::class)->findOneBy(['media' => $media]);
         $this->newMedia = false;
 
-        if (! $mediaEntity instanceof MediaInterface) {
+        if (! $mediaEntity instanceof Media) {
             $this->newMedia = true;
-            $mediaClass = $this->entityClass;
-            $mediaEntity = new $mediaClass();
+            $mediaEntity = new Media();
             $mediaEntity
                 ->setMedia($media)
                 ->setName($media.' - '.uniqid());
