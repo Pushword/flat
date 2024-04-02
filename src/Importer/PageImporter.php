@@ -2,7 +2,11 @@
 
 namespace Pushword\Flat\Importer;
 
+use DateTime;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Exception;
+use LogicException;
 use Pushword\Core\Entity\Media;
 use Pushword\Core\Entity\Page;
 use Pushword\Core\Repository\PageRepository;
@@ -47,7 +51,7 @@ class PageImporter extends AbstractImporter
         return $this->contentDirFinder->get($host);
     }
 
-    public function import(string $filePath, \DateTimeInterface $lastEditDateTime): void
+    public function import(string $filePath, DateTimeInterface $lastEditDateTime): void
     {
         if (! str_starts_with($this->getMimeTypeFromFile($filePath), 'text/')) {
             return;
@@ -61,17 +65,17 @@ class PageImporter extends AbstractImporter
         }
 
         $slug = $document->matter('slug') ?? $this->filePathToSlug($filePath);
-        $slug = \is_string($slug) ? $slug : throw new \Exception();
+        $slug = \is_string($slug) ? $slug : throw new Exception();
 
         $data = $document->matter();
-        $data = \is_array($data) ? $data : throw new \Exception();
+        $data = \is_array($data) ? $data : throw new Exception();
         /** @var array<string, mixed> $data */
         $this->editPage($slug, $data, $document->body(), $lastEditDateTime);
     }
 
     private function filePathToSlug(string $filePath): string
     {
-        $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath)) ?? throw new \Exception();
+        $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath)) ?? throw new Exception();
 
         if ('index' == $slug) {
             $slug = 'homepage';
@@ -99,7 +103,7 @@ class PageImporter extends AbstractImporter
     /**
      * @param array<string, mixed> $data
      */
-    private function editPage(string $slug, array $data, string $content, \DateTime|\DateTimeImmutable|\DateTimeInterface $lastEditDateTime): void
+    private function editPage(string $slug, array $data, string $content, DateTime|DateTimeImmutable|DateTimeInterface $lastEditDateTime): void
     {
         $page = $this->getPageFromSlug($slug);
 
@@ -122,7 +126,7 @@ class PageImporter extends AbstractImporter
             $setter = 'set'.ucfirst($camelKey);
             if (method_exists($page, $setter)) {
                 if (\in_array($camelKey, ['publishedAt', 'createdAt', 'updatedAt'], true) && \is_scalar($value)) {
-                    $value = new \DateTime(\strval($value));
+                    $value = new DateTime(\strval($value));
                 }
 
                 $page->$setter($value); // @phpstan-ignore-line
@@ -147,7 +151,7 @@ class PageImporter extends AbstractImporter
         }
     }
 
-    private function initDateTimeProperties(Page $page, \DateTimeInterface $lastEditDateTime): void
+    private function initDateTimeProperties(Page $page, DateTimeInterface $lastEditDateTime): void
     {
         if (null === $page->getPublishedAt(false)) {
             $page->setPublishedAt($lastEditDateTime);
@@ -189,13 +193,13 @@ class PageImporter extends AbstractImporter
                 if (Media::class === $object) {
                     $setter = 'set'.ucfirst($property);
                     if (! \is_string($value)) {
-                        throw new \LogicException();
+                        throw new LogicException();
                     }
 
-                    $mediaName = preg_replace('@^/?media/(default)?/@', '', $value) ?? throw new \Exception();
+                    $mediaName = preg_replace('@^/?media/(default)?/@', '', $value) ?? throw new Exception();
                     $media = $this->getMedia($mediaName);
                     if (! $media instanceof Media) {
-                        throw new \Exception('Media `'.$value.'` ('.$mediaName.') not found in `'.$slug.'`.');
+                        throw new Exception('Media `'.$value.'` ('.$mediaName.') not found in `'.$slug.'`.');
                     }
 
                     $page->$setter($media); // @phpstan-ignore-line
@@ -268,7 +272,7 @@ class PageImporter extends AbstractImporter
         }
 
         if (! \is_string($criteria)) {
-            throw new \Exception();
+            throw new Exception();
         }
 
         $pages = array_filter($this->getPages(), static fn (Page $page): bool => $page->getSlug() === $criteria);

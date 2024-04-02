@@ -2,6 +2,8 @@
 
 namespace Pushword\Flat;
 
+use DateTime;
+use LogicException;
 use Pushword\Core\Component\App\AppConfig;
 use Pushword\Core\Component\App\AppPool;
 use Pushword\Flat\Importer\AbstractImporter;
@@ -80,7 +82,7 @@ class FlatFileImporter
 
     private function importFile(string $filePath, string $type): void
     {
-        $lastEditDateTime = (new \DateTime())->setTimestamp(filemtime($filePath));
+        $lastEditDateTime = (new DateTime())->setTimestamp(filemtime($filePath));
 
         $this->getImporter($type)->import($filePath, $lastEditDateTime);
     }
@@ -97,7 +99,7 @@ class FlatFileImporter
 
         if (! property_exists($this, $importer)
             || ! ($importer = $this->$importer) instanceof AbstractImporter) { // @phpstan-ignore-line
-            throw new \LogicException();
+            throw new LogicException();
         }
 
         return $importer;
