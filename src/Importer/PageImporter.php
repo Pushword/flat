@@ -268,6 +268,7 @@ class PageImporter extends AbstractImporter
     private function getPage(mixed $criteria): ?Page
     {
         if (\is_array($criteria)) {
+            /** @var array<string, mixed> $criteria */
             return $this->em->getRepository(Page::class)->findOneBy($criteria);
         }
 

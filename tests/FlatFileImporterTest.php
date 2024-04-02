@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Pushword\Flat\Tests;
 
+use Pushword\Core\Component\App\AppPool;
 use Pushword\Core\Entity\Page;
 use Pushword\Flat\FlatFileContentDirFinder;
 use Pushword\Flat\FlatFileImporter;
@@ -18,50 +19,47 @@ class FlatFileImporterTest extends KernelTestCase
     {
         self::bootKernel();
 
-        $this->assertSame(
-            $this->getContentDirFinder()->get('pushword.piedweb.com'),
-            $this->getContentDir()
-        );
+        self::assertSame($this->getContentDirFinder()->get('pushword.piedweb.com'), $this->getContentDir());
     }
 
-    public function testWithSetMediaDir()
+    public function testWithSetMediaDir(): void
     {
         $name = $this->prepare();
 
         $importer = $this->getImporter();
 
-        $importer->setMediaDir(self::$kernel->getContainer()->getParameter('kernel.project_dir').'/media');
+        $importer->setMediaDir(self::getContainer()->getParameter('kernel.project_dir').'/media');
 
         $importer->run(
             'pushword.piedweb.com'
         );
 
-        $this->assertFileExists(self::$kernel->getContainer()->getParameter('kernel.project_dir').'/media/logo-test.png');
+        self::assertFileExists(self::getContainer()->getParameter('kernel.project_dir').'/media/logo-test.png');
 
         $this->clean($name);
     }
 
-    private function getImporter(): FlatFileImporter
+    private function getImporter(): FlatFileImporter // @phpstan-ignore-line
     {
         return new FlatFileImporter(
-            self::$kernel->getContainer()->getParameter('pw.public_dir'),
-            self::$kernel->getContainer()->getParameter('pw.media_dir'),
-            self::$kernel->getContainer()->get(\Pushword\Core\Component\App\AppPool::class),
+            self::getContainer()->getParameter('pw.public_dir'),
+            self::getContainer()->getParameter('pw.media_dir'),
+            self::getContainer()->get(AppPool::class),
             $this->getContentDirFinder(),
             $this->getPageImporter(),
             $this->getMediaImporter()
         );
     }
 
-    private function getContentDir()
+    private function getContentDir(): string
     {
-        return self::$kernel->getContainer()->getParameter('kernel.project_dir').'/../docs/content';
+        return self::getContainer()->getParameter('kernel.project_dir').'/../docs/content';
     }
 
-    private function prepare()
+    private function prepare(): string
     {
         self::bootKernel();
-        $newName = 'logo-test'.uniqid().rand().'.png';
+        $newName = 'logo-test'.uniqid().random_int(0, mt_getrandmax()).'.png';
 
         (new Filesystem())->copy(__DIR__.'/content/test-content.md', $this->getContentDir().'/test-content.md');
         (new Filesystem())->copy(__DIR__.'/content/media/logo-test.png', $this->getContentDir().'/media/logo-test.png');
@@ -70,42 +68,41 @@ class FlatFileImporterTest extends KernelTestCase
         return $newName;
     }
 
-    private function clean($name)
+    private function clean(string $name): void
     {
-        @unlink(self::$kernel->getContainer()->getParameter('pw.media_dir').'/logo-test.png');
-        @unlink(self::$kernel->getContainer()->getParameter('pw.media_dir').'/'.$name);
+        @unlink(self::getContainer()->getParameter('pw.media_dir').'/logo-test.png');
+        @unlink(self::getContainer()->getParameter('pw.media_dir').'/'.$name);
         @unlink($this->getContentDir().'/test-content.md');
         @unlink($this->getContentDir().'/media/'.$name);
         @unlink($this->getContentDir().'/media/logo-test.png');
     }
 
-    private function getContentDirFinder()
+    private function getContentDirFinder(): FlatFileContentDirFinder
     {
         return new FlatFileContentDirFinder(
-            self::$kernel->getContainer()->get(\Pushword\Core\Component\App\AppPool::class),
-            self::$kernel->getContainer()->getParameter('pw.public_dir')
+            self::getContainer()->get(AppPool::class),
+            self::getContainer()->getParameter('pw.public_dir')
         );
     }
 
     private function getMediaImporter(): MediaImporter
     {
         return new MediaImporter(
-            self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager'),
-            self::$kernel->getContainer()->get(\Pushword\Core\Component\App\AppPool::class),
-            self::$kernel->getContainer()->getParameter('kernel.project_dir').'/media',
-            self::$kernel->getContainer()->getParameter('kernel.project_dir')
+            self::getContainer()->get('doctrine.orm.default_entity_manager'),
+            self::getContainer()->get(AppPool::class),
+            self::getContainer()->getParameter('kernel.project_dir').'/media',
+            self::getContainer()->getParameter('kernel.project_dir')
         );
     }
 
-    private function getPageImporter()
+    private function getPageImporter(): PageImporter
     {
         $pageImporter = new PageImporter(
-            self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager'),
-            self::$kernel->getContainer()->get(\Pushword\Core\Component\App\AppPool::class),
-            Page::class
+            self::getContainer()->get('doctrine.orm.default_entity_manager'),
+            self::getContainer()->get(AppPool::class),
         );
         $pageImporter->contentDirFinder = $this->getContentDirFinder();
-        $pageImporter->pageRepo = self::$kernel->getContainer()->get('doctrine.orm.default_entity_manager')->getRepository(Page::class);
+        $pageImporter->pageRepo = self::getContainer()->get('doctrine.orm.default_entity_manager')->getRepository(Page::class);
 
         return $pageImporter;
     }
