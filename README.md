@@ -6,7 +6,7 @@ Transform Pushword in a FlatFile CMS.
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/Pushword/Pushword/run-tests.yml?branch=main)](https://github.com/Pushword/Pushword/actions)
 [![Quality Score](https://img.shields.io/scrutinizer/g/pushword/pushword.svg?style=flat)](https://scrutinizer-ci.com/g/pushword/pushword)
-[![Code Coverage](https://codecov.io/gh/Pushword/Pushword/branch/next/graph/badge.svg)](https://codecov.io/gh/Pushword/Pushword/branch/next)
+[![Code Coverage](https://codecov.io/gh/Pushword/Pushword/branch/next/graph/badge.svg)](https://codecov.io/gh/Pushword/Pushword/tree/next)
 [![Type Coverage](https://shepherd.dev/github/pushword/pushword/coverage.svg)](https://shepherd.dev/github/pushword/pushword)
 [![Total Downloads](https://img.shields.io/packagist/dt/pushword/core.svg?style=flat)](https://packagist.org/packages/pushword/core)
 
