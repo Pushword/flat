@@ -22,7 +22,7 @@ use Symfony\Contracts\Service\Attribute\Required;
  *
  * @extends AbstractImporter<Page>
  */
-class PageImporter extends AbstractImporter
+final class PageImporter extends AbstractImporter
 {
     /**
      * @var Page[]|null
@@ -44,6 +44,12 @@ class PageImporter extends AbstractImporter
 
     private bool $newPage = false;
 
+    /** @var array<string, string> where key is the relative file path and value is the slug */
+    private array $slugs = [];
+
+    /** @var array<string, Page> where key is the slug */
+    private array $pageList = [];
+
     private function getContentDir(): string
     {
         $host = $this->apps->get()->getMainHost();
@@ -56,7 +62,6 @@ class PageImporter extends AbstractImporter
         if (! str_starts_with($this->getMimeTypeFromFile($filePath), 'text/')) {
             return;
         }
-
         $content = file_get_contents($filePath);
         $document = YamlFrontMatter::parse($content);
 
@@ -66,11 +71,13 @@ class PageImporter extends AbstractImporter
 
         $slug = $document->matter('slug') ?? $this->filePathToSlug($filePath);
         $slug = \is_string($slug) ? $slug : throw new Exception();
+        $relativeFilePath = str_replace($this->getContentDir().'/', '', $filePath);
+        $this->slugs[$relativeFilePath] = $slug;
 
         $data = $document->matter();
         $data = \is_array($data) ? $data : throw new Exception();
         /** @var array<string, mixed> $data */
-        $this->editPage($slug, $data, $document->body(), $lastEditDateTime);
+        $this->pageList[$slug] = $this->editPage($slug, $data, $document->body(), $lastEditDateTime);
     }
 
     private function filePathToSlug(string $filePath): string
@@ -100,15 +107,35 @@ class PageImporter extends AbstractImporter
         return $page;
     }
 
+    private function relativeMarkdownLinkToSlugLink(): void
+    {
+        foreach ($this->slugs as $slug) {
+            $page = $this->pageList[$slug] ?? throw new Exception($slug);
+
+            $content = $page->getMainContent();
+            // $content = preg_replace('/\[(.+)\]\(([^\/].*)\.md\)/', '[$1](/$2)', $content);
+            preg_match_all('/\[(.+)\]\(([^\/].*\.md)(#?(.*))\)/', $content, $matches);
+            foreach ($matches[0] as $k => $match) {
+                if (! isset($this->slugs[$matches[2][$k]])) {
+                    continue;
+                }
+
+                $content = str_replace($match, '['.$matches[1][$k].'](/'.$this->slugs[$matches[2][$k]].($matches[3][$k] ?? '').')', $content);
+            }
+
+            $page->setMainContent($content);
+        }
+    }
+
     /**
      * @param array<string, mixed> $data
      */
-    private function editPage(string $slug, array $data, string $content, DateTime|DateTimeImmutable|DateTimeInterface $lastEditDateTime): void
+    private function editPage(string $slug, array $data, string $content, DateTime|DateTimeImmutable|DateTimeInterface $lastEditDateTime): Page
     {
         $page = $this->getPageFromSlug($slug);
 
         if (! $this->newPage && $page->getUpdatedAt() >= $lastEditDateTime) {
-            return; // no update needed
+            return $page; // no update needed
         }
 
         $page->setCustomProperties([]);
@@ -149,6 +176,8 @@ class PageImporter extends AbstractImporter
             $this->initDateTimeProperties($page, $lastEditDateTime);
             $this->em->persist($page);
         }
+
+        return $page;
     }
 
     private function initDateTimeProperties(Page $page, DateTimeInterface $lastEditDateTime): void
@@ -227,6 +256,8 @@ class PageImporter extends AbstractImporter
 
     public function finishImport(): void
     {
+        $this->relativeMarkdownLinkToSlugLink();
+
         $this->em->flush();
 
         $this->getPages(false);

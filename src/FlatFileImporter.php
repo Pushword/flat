@@ -18,15 +18,21 @@ use function Safe\scandir;
  *
  * @template T of object
  */
-class FlatFileImporter
+final class FlatFileImporter
 {
     /** @psalm-suppress PropertyNotSetInConstructor */
     protected AppConfig $app;
 
     protected string $customMediaDir = '';
 
-    public function __construct(protected string $projectDir, protected string $mediaDir, protected AppPool $apps, protected FlatFileContentDirFinder $contentDirFinder, protected PageImporter $pageImporter, protected MediaImporter $mediaImporter)
-    {
+    public function __construct(
+        protected string $projectDir,
+        protected string $mediaDir,
+        protected AppPool $apps,
+        protected FlatFileContentDirFinder $contentDirFinder,
+        protected PageImporter $pageImporter,
+        protected MediaImporter $mediaImporter
+    ) {
     }
 
     public function run(?string $host): void

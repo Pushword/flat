@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Pushword\Flat\Tests;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Pushword\Core\Component\App\AppPool;
 use Pushword\Core\Entity\Page;
+use Pushword\Core\Repository\PageRepository;
 use Pushword\Flat\FlatFileContentDirFinder;
 use Pushword\Flat\FlatFileImporter;
 use Pushword\Flat\Importer\MediaImporter;
@@ -36,7 +38,21 @@ class FlatFileImporterTest extends KernelTestCase
 
         self::assertFileExists(self::getContainer()->getParameter('kernel.project_dir').'/media/logo-test.png');
 
+        self::assertLinkToMarkdownFileIsReplacedBySlugPath();
+
         $this->clean($name);
+    }
+
+    private function assertLinkToMarkdownFileIsReplacedBySlugPath(): void
+    {
+        /** @var EntityManagerInterface */
+        $em = self::getContainer()->get('doctrine.orm.default_entity_manager');
+        /** @var PageRepository */
+        $pageRepo = $em->getRepository(Page::class);
+
+        $page = $pageRepo->findOneBy(['slug' => 'test-link']);
+        self::assertInstanceOf(Page::class, $page);
+        self::assertStringContainsString('](/test-content)', $page->getMainContent());
     }
 
     private function getImporter(): FlatFileImporter // @phpstan-ignore-line
@@ -62,6 +78,7 @@ class FlatFileImporterTest extends KernelTestCase
         $newName = 'logo-test'.uniqid().random_int(0, mt_getrandmax()).'.png';
 
         (new Filesystem())->copy(__DIR__.'/content/test-content.md', $this->getContentDir().'/test-content.md');
+        (new Filesystem())->copy(__DIR__.'/content/test-link.md', $this->getContentDir().'/test-link.md');
         (new Filesystem())->copy(__DIR__.'/content/media/logo-test.png', $this->getContentDir().'/media/logo-test.png');
         (new Filesystem())->copy(__DIR__.'/content/media/logo-test.png', $this->getContentDir().'/media/'.$newName);
 
@@ -73,6 +90,7 @@ class FlatFileImporterTest extends KernelTestCase
         @unlink(self::getContainer()->getParameter('pw.media_dir').'/logo-test.png');
         @unlink(self::getContainer()->getParameter('pw.media_dir').'/'.$name);
         @unlink($this->getContentDir().'/test-content.md');
+        @unlink($this->getContentDir().'/test-link.md');
         @unlink($this->getContentDir().'/media/'.$name);
         @unlink($this->getContentDir().'/media/logo-test.png');
     }
