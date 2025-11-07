@@ -2,107 +2,56 @@
 
 namespace Pushword\Flat;
 
-use Pushword\Core\Component\App\AppConfig;
 use Pushword\Core\Component\App\AppPool;
 use Pushword\Core\Entity\Media;
-use Pushword\Core\Entity\Page;
 use Pushword\Core\Repository\MediaRepository;
-use Pushword\Core\Repository\PageRepository;
 use Pushword\Core\Utils\Entity;
-use Pushword\Flat\Importer\MediaImporter;
-use Pushword\Flat\Importer\PageImporter;
+use Pushword\Flat\Exporter\PageExporter;
 
 use function Safe\json_encode;
 
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
  * Permit to find error in image or link.
  */
-class FlatFileExporter
+final class FlatFileExporter
 {
-    protected AppConfig $app;
+    private string $copyMedia = '';
 
-    protected string $copyMedia = '';
+    public string $exportDir = '';
 
-    protected string $exportDir = '';
-
-    protected Filesystem $filesystem;
+    private readonly Filesystem $filesystem;
 
     public function __construct(
-        protected string $projectDir,
-        protected string $mediaDir,
-        protected AppPool $apps,
-        protected FlatFileContentDirFinder $contentDirFinder,
-        protected PageImporter $pageImporter,
-        protected MediaImporter $mediaImporter,
-        protected PageRepository $pageRepo,
-        protected MediaRepository $mediaRepo,
+        private readonly string $projectDir,
+        private readonly string $mediaDir,
+        private readonly AppPool $apps,
+        private readonly FlatFileContentDirFinder $contentDirFinder,
+        private readonly MediaRepository $mediaRepo,
+        private readonly PageExporter $pageExporter,
+        private readonly Stopwatch $stopWatch
     ) {
         $this->filesystem = new Filesystem();
     }
 
-    public function setExportDir(string $path): self
+    public function run(string $host, bool $force = false): int|float
     {
-        $this->exportDir = $path;
+        $this->stopWatch->start('run');
 
-        return $this;
-    }
-
-    public function run(?string $host): string
-    {
-        if (null !== $host) {
-            $this->app = $this->apps->switchCurrentApp($host)->get();
-        }
+        $app = $this->apps->switchCurrentApp($host)->get();
 
         $this->exportDir = '' !== $this->exportDir ? $this->exportDir
-            : ($this->contentDirFinder->has($this->app->getMainHost())
-                ? $this->contentDirFinder->get($this->app->getMainHost())
+            : ($this->contentDirFinder->has($app->getMainHost())
+                ? $this->contentDirFinder->get($app->getMainHost())
                 : $this->projectDir.'/var/export/'.uniqid());
 
-        $this->exportPages();
+        $this->pageExporter->exportDir = $this->exportDir;
+        $this->pageExporter->exportPages($force);
         $this->exportMedias();
 
-        return $this->exportDir;
-    }
-
-    private function exportPages(): void
-    {
-        $pages = $this->pageRepo->findByHost($this->apps->get()->getMainHost());
-
-        foreach ($pages as $page) {
-            $this->exportPage($page);
-        }
-    }
-
-    private function exportPage(Page $page): void
-    {
-        $properties = Entity::getProperties($page);
-
-        $data = [];
-        foreach ($properties as $property) {
-            if (\in_array($property, ['mainContent', 'id'], true)) {
-                continue;
-            }
-
-            $getter = 'get'.ucfirst($property);
-            $value = $page->$getter(); // @phpstan-ignore-line
-            if (null === $value) {
-                continue;
-            }
-
-            if ('customProperties' == $property && empty($value)) { // @phpstan-ignore-line
-                continue;
-            }
-
-            $data[$property] = $value;
-        }
-
-        $metaData = Yaml::dump($data);
-        $content = '---'.\PHP_EOL.$metaData.\PHP_EOL.'---'.\PHP_EOL.\PHP_EOL.$page->getMainContent();
-
-        $this->filesystem->dumpFile($this->exportDir.'/'.$page->getSlug().'.md', $content);
+        return $this->stopWatch->stop('run')->getDuration();
     }
 
     private function exportMedias(): void

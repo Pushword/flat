@@ -15,6 +15,7 @@ use Pushword\Flat\FlatFileContentDirFinder;
 
 use function Safe\file_get_contents;
 
+use Spatie\YamlFrontMatter\Document;
 use Spatie\YamlFrontMatter\YamlFrontMatter;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -56,21 +57,45 @@ final class PageImporter extends AbstractImporter
         return $this->contentDirFinder->get($host);
     }
 
-    public function import(string $filePath, DateTimeInterface $lastEditDateTime): void
+    public function getDocumentFromFile(string $filePath): ?Document
     {
         if (! str_starts_with($this->getMimeTypeFromFile($filePath), 'text/')) {
-            return;
+            return null;
         }
 
         $content = file_get_contents($filePath);
         $document = YamlFrontMatter::parse($content);
 
-        if ([] === $document->matter()) {
-            return; // throw new Exception('No content found in `'.$filePath.'`');
+        return $document;
+    }
+
+    /**
+     * @return non-empty-string
+     */
+    public function getSlug(string $filePath, Document $document): string
+    {
+        $slug = $document->matter('slug');
+        $filePathSlug = $this->filePathToSlug($filePath);
+
+        if (! is_string($slug) || in_array($slug, ['', null], true)) {
+            return $filePathSlug;
         }
 
-        $slug = $document->matter('slug') ?? $this->filePathToSlug($filePath);
-        $slug = \is_string($slug) ? $slug : throw new Exception();
+        if ($slug !== $filePathSlug) {
+            // todo : throw and exception
+        }
+
+        return $slug;
+    }
+
+    public function import(string $filePath, DateTimeInterface $lastEditDateTime): void
+    {
+        $document = $this->getDocumentFromFile($filePath);
+        if (null === $document) {
+            return;
+        }
+
+        $slug = $this->getSlug($filePath, $document);
 
         $relativeFilePath = str_replace($this->getContentDir().'/', '', $filePath);
         $this->slugs[$relativeFilePath] = $slug;
@@ -79,9 +104,16 @@ final class PageImporter extends AbstractImporter
         $data = \is_array($data) ? $data : throw new Exception();
         /** @var array<string, mixed> $data */
         $this->pageList[$slug] = $this->editPage($slug, $data, $document->body(), $lastEditDateTime);
+
+        // next lines permit to debug
+        // dump($slug);
+        // $this->em->flush();
     }
 
-    private function filePathToSlug(string $filePath): string
+    /**
+     * @return non-empty-string
+     */
+    public function filePathToSlug(string $filePath): string
     {
         $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath)) ?? throw new Exception();
 
@@ -131,9 +163,18 @@ final class PageImporter extends AbstractImporter
     /**
      * @param array<string, mixed> $data
      */
-    private function editPage(string $slug, array $data, string $content, DateTime|DateTimeImmutable|DateTimeInterface $lastEditDateTime): Page
-    {
-        $page = $this->getPageFromSlug($slug);
+    private function editPage(
+        string $slug,
+        array $data,
+        string $content,
+        DateTime|DateTimeImmutable|DateTimeInterface $lastEditDateTime
+    ): Page {
+        if (isset($data['id'])) {
+            $page = $this->pageRepo->find($data['id']);
+            unset($data['id']);
+        }
+
+        $page ??= $this->getPageFromSlug($slug);
 
         if (! $this->newPage && $page->getUpdatedAt() >= $lastEditDateTime) {
             return $page; // no update needed
