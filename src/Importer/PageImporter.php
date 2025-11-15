@@ -8,7 +8,6 @@ use DateTimeInterface;
 use Exception;
 use LogicException;
 use Override;
-use Psr\Log\LoggerInterface;
 use Pushword\Core\Entity\Media;
 use Pushword\Core\Entity\Page;
 use Pushword\Core\Repository\PageRepository;
@@ -42,9 +41,6 @@ final class PageImporter extends AbstractImporter
 
     #[Required]
     public PageRepository $pageRepo;
-
-    #[Required]
-    public LoggerInterface $logger;
 
     private bool $newPage = false;
 
@@ -86,11 +82,7 @@ final class PageImporter extends AbstractImporter
         }
 
         if ($slug !== $filePathSlug) {
-            // todo : throw and exception ?
-            $this->logger->warning('Slug mismatch for file `{filePath}` and slug `{slug}`', [
-                'filePath' => $filePath,
-                'slug' => $slug,
-            ]);
+            // todo : throw and exception
         }
 
         return $slug;
@@ -121,7 +113,7 @@ final class PageImporter extends AbstractImporter
     /**
      * @return non-empty-string
      */
-    private function filePathToSlug(string $filePath): string
+    public function filePathToSlug(string $filePath): string
     {
         $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath)) ?? throw new Exception();
 
@@ -131,10 +123,7 @@ final class PageImporter extends AbstractImporter
             $slug = substr($slug, 0, -\strlen('index'));
         }
 
-        $slug = Page::normalizeSlug($slug);
-        assert('' !== $slug);
-
-        return $slug;
+        return Page::normalizeSlug($slug);
     }
 
     private function getPageFromSlug(string $slug): Page
