@@ -12,6 +12,7 @@ use Psr\Log\LoggerInterface;
 use Pushword\Core\Entity\Media;
 use Pushword\Core\Entity\Page;
 use Pushword\Core\Repository\PageRepository;
+use Pushword\Flat\Converter\PublishedAtConverter;
 use Pushword\Flat\FlatFileContentDirFinder;
 
 use function Safe\file_get_contents;
@@ -67,10 +68,13 @@ final class PageImporter extends AbstractImporter
             return null;
         }
 
+        $filename = basename($filePath);
         if (str_ends_with($filePath, 'pages.csv')
           || str_ends_with($filePath, 'medias.csv')
-          || str_ends_with($filePath, 'index.csv')
           || str_ends_with($filePath, 'conversation.csv')
+          || str_ends_with($filePath, 'redirection.csv')
+          || 1 === preg_match('/^index(\.[a-z]{2})?\.csv$/', $filename)
+          || 1 === preg_match('/^iDraft(\.[a-z]{2})?\.csv$/', $filename)
         ) {
             return null;
         }
@@ -200,6 +204,7 @@ final class PageImporter extends AbstractImporter
         }
 
         $page->setCustomProperties([]);
+        $publishedAtExplicitlySet = false;
 
         foreach ($data as $key => $value) {
             $key = $this->normalizePropertyName($key);
@@ -213,7 +218,10 @@ final class PageImporter extends AbstractImporter
 
             $setter = 'set'.ucfirst($camelKey);
             if (method_exists($page, $setter)) {
-                if (\in_array($camelKey, ['publishedAt', 'createdAt', 'updatedAt'], true) && \is_scalar($value)) {
+                if ('publishedAt' === $camelKey) {
+                    $value = PublishedAtConverter::fromFlatValue($value);
+                    $publishedAtExplicitlySet = true;
+                } elseif (\in_array($camelKey, ['createdAt', 'updatedAt'], true) && \is_scalar($value)) {
                     $value = new DateTime((string) $value);
                 }
 
@@ -234,16 +242,16 @@ final class PageImporter extends AbstractImporter
         $page->setMainContent($content);
 
         if ($this->newPage) {
-            $this->initDateTimeProperties($page, $lastEditDateTime);
+            $this->initDateTimeProperties($page, $lastEditDateTime, $publishedAtExplicitlySet);
             $this->em->persist($page);
         }
 
         return $page;
     }
 
-    private function initDateTimeProperties(Page $page, DateTimeInterface $lastEditDateTime): void
+    private function initDateTimeProperties(Page $page, DateTimeInterface $lastEditDateTime, bool $publishedAtExplicitlySet = false): void
     {
-        if (null === $page->getPublishedAt()) {
+        if (! $publishedAtExplicitlySet && null === $page->getPublishedAt()) {
             $page->setPublishedAt($lastEditDateTime);
         }
 
