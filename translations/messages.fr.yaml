@@ -3,6 +3,16 @@ flatFilesModifiedNotification: "Des fichiers flat ont été modifiés. Synchroni
 flatLockAcquired: "Lock flat activé."
 flatLockReleased: "Lock flat libéré."
 flatLockWarning: "Édition flat en cours (%reason%) - Risque de conflit si vous sauvegardez."
+flatNotificationDateLabel: Date
+flatNotificationDetailTitle: "Notification n°%id%"
+flatNotificationHostLabel: Hôte
+flatNotificationIndexTitle: "Notifications d'administration"
+flatNotificationPlural: Notifications
+flatNotificationReadLabel: Lu
+flatNotificationSingular: Notification
+flatNotificationTypeConflict: Conflit
+flatNotificationTypeLockInfo: "Info de verrouillage"
+flatNotificationTypeSyncError: "Erreur de synchronisation"
 flatUnresolvedConflicts: "%count% conflit(s) non résolu(s). Fichiers à traiter : ~conflict-*"
 flatWebhookLockMessage: "Verrouillé par %user% : %reason%"
 flatWebhookLockTitle: "Édition de contenu verrouillée"
