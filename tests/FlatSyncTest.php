@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Pushword\Flat\Tests;
 
 use Doctrine\ORM\EntityManager;
+use Override;
 use PHPUnit\Framework\Attributes\Group;
 use Pushword\Core\Entity\Page;
+use Pushword\Flat\FlatFileContentDirFinder;
 use Pushword\Flat\FlatFileSync;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -14,6 +16,18 @@ use Symfony\Component\Filesystem\Filesystem;
 #[Group('integration')]
 final class FlatSyncTest extends KernelTestCase
 {
+    private string $contentDir;
+
+    protected function setUp(): void
+    {
+        self::bootKernel();
+
+        /** @var FlatFileContentDirFinder $contentDirFinder */
+        $contentDirFinder = self::getContainer()->get(FlatFileContentDirFinder::class);
+        $this->contentDir = $contentDirFinder->get('localhost.dev');
+    }
+
+    #[Override]
     protected function tearDown(): void
     {
         $this->cleanFixtures();
@@ -22,13 +36,12 @@ final class FlatSyncTest extends KernelTestCase
 
     public function testImportReplacesMarkdownLinks(): void
     {
-        self::bootKernel();
         $this->cleanGlobalIndexBeforeTest();
         $this->prepareFixtures();
 
         /** @var FlatFileSync $sync */
         $sync = self::getContainer()->get(FlatFileSync::class);
-        $sync->import('pushword.piedweb.com');
+        $sync->import('localhost.dev');
 
         /** @var EntityManager $em */
         $em = self::getContainer()->get('doctrine.orm.default_entity_manager');
@@ -36,42 +49,43 @@ final class FlatSyncTest extends KernelTestCase
 
         self::assertInstanceOf(Page::class, $page);
         self::assertStringContainsString('](/test-content)', $page->getMainContent());
+
+        // Cleanup imported pages
+        $testContent = $em->getRepository(Page::class)->findOneBy(['slug' => 'test-content']);
+        if ($testContent instanceof Page) {
+            $em->remove($testContent);
+        }
+
+        $em->remove($page);
+        $em->flush();
     }
 
     private function prepareFixtures(): void
     {
         $filesystem = new Filesystem();
-        $contentDir = $this->getContentDir();
 
-        $filesystem->mkdir($contentDir.'/media');
-        $filesystem->copy(__DIR__.'/content/test-content.md', $contentDir.'/test-content.md', true);
-        $filesystem->copy(__DIR__.'/content/test-link.md', $contentDir.'/test-link.md', true);
-        $filesystem->copy(__DIR__.'/content/media/logo-test.png', $contentDir.'/media/logo-test.png', true);
-        $filesystem->copy(__DIR__.'/content/media/index.csv', $contentDir.'/media/index.csv', true);
+        $filesystem->mkdir($this->contentDir.'/media');
+        $filesystem->copy(__DIR__.'/content/test-content.md', $this->contentDir.'/test-content.md', true);
+        $filesystem->copy(__DIR__.'/content/test-link.md', $this->contentDir.'/test-link.md', true);
+        $filesystem->copy(__DIR__.'/content/media/logo-test.png', $this->contentDir.'/media/logo-test.png', true);
+        $filesystem->copy(__DIR__.'/content/media/index.csv', $this->contentDir.'/media/index.csv', true);
     }
 
     private function cleanFixtures(): void
     {
-        @unlink($this->getContentDir().'/test-content.md');
-        @unlink($this->getContentDir().'/test-link.md');
-        @unlink($this->getContentDir().'/media/logo-test.png');
-        @unlink($this->getContentDir().'/media/index.csv');
-        @unlink($this->getMediaDir().'/logo-test.png');
-        @unlink($this->getMediaDir().'/index.csv');
+        new Filesystem()->remove([
+            $this->contentDir.'/test-content.md',
+            $this->contentDir.'/test-link.md',
+            $this->contentDir.'/media/logo-test.png',
+            $this->contentDir.'/media/index.csv',
+            $this->getMediaDir().'/logo-test.png',
+            $this->getMediaDir().'/index.csv',
+        ]);
     }
 
     private function cleanGlobalIndexBeforeTest(): void
     {
-        // Remove any existing index.csv from global media dir to avoid ID conflicts
-        @unlink($this->getMediaDir().'/index.csv');
-    }
-
-    private function getContentDir(): string
-    {
-        /** @var non-falsy-string $dir */
-        $dir = self::getContainer()->getParameter('kernel.project_dir').'/../docs/content';
-
-        return $dir;
+        new Filesystem()->remove($this->getMediaDir().'/index.csv');
     }
 
     private function getMediaDir(): string
