@@ -103,36 +103,28 @@ final class CrashRecoveryTest extends KernelTestCase
 
     public function testSyncStateRecordedAfterImport(): void
     {
-        // Use isolated host key to avoid parallel test interference
-        $isolatedHost = 'test-import-'.getmypid();
-        $this->stateManager->resetState($isolatedHost);
+        $this->stateManager->resetState('localhost.dev');
 
-        $this->stateManager->recordImport('page', $isolatedHost);
+        $this->pageSync->import('localhost.dev');
 
-        $lastSyncTime = $this->stateManager->getLastSyncTime('page', $isolatedHost);
+        $lastSyncTime = $this->stateManager->getLastSyncTime('page', 'localhost.dev');
         self::assertGreaterThan(0, $lastSyncTime, 'Sync state should be recorded after import');
 
-        $direction = $this->stateManager->getLastDirection($isolatedHost);
+        $direction = $this->stateManager->getLastDirection('localhost.dev');
         self::assertSame('import', $direction, 'Last direction should be import');
-
-        $this->stateManager->resetState($isolatedHost);
     }
 
     public function testSyncStateRecordedAfterExport(): void
     {
-        // Use isolated host key to avoid parallel test interference
-        $isolatedHost = 'test-export-'.getmypid();
-        $this->stateManager->resetState($isolatedHost);
+        $this->stateManager->resetState('localhost.dev');
 
-        $this->stateManager->recordExport('page', $isolatedHost);
+        $this->pageSync->export('localhost.dev', true, $this->contentDir);
 
-        $lastSyncTime = $this->stateManager->getLastSyncTime('page', $isolatedHost);
+        $lastSyncTime = $this->stateManager->getLastSyncTime('page', 'localhost.dev');
         self::assertGreaterThan(0, $lastSyncTime, 'Sync state should be recorded after export');
 
-        $direction = $this->stateManager->getLastDirection($isolatedHost);
+        $direction = $this->stateManager->getLastDirection('localhost.dev');
         self::assertSame('export', $direction, 'Last direction should be export');
-
-        $this->stateManager->resetState($isolatedHost);
     }
 
     public function testDatabaseBackupIsRestorable(): void
