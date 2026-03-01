@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Pushword\Flat\Service;
 
-use Pushword\Core\BackgroundTask\BackgroundTaskDispatcherInterface;
 use Pushword\Core\Entity\Media;
 use Pushword\Core\Entity\Page;
 use Pushword\Flat\Messenger\ConsumePendingExportMessage;
@@ -20,8 +19,7 @@ final class DeferredExportProcessor
 
     public function __construct(
         private readonly string $varDir,
-        private readonly BackgroundTaskDispatcherInterface $backgroundTaskDispatcher,
-        private readonly ?MessageBusInterface $messageBus = null,
+        private readonly MessageBusInterface $messageBus,
         private readonly bool $autoExportEnabled = true,
         private readonly int $debounceDelay = 120,
     ) {
@@ -63,15 +61,7 @@ final class DeferredExportProcessor
 
         $this->writePendingFlag(array_values($entityTypes), array_values($hosts));
 
-        if (null !== $this->messageBus) {
-            $this->messageBus->dispatch(new ConsumePendingExportMessage(), [new DelayStamp($this->debounceDelay * 1000)]);
-        } else {
-            $this->backgroundTaskDispatcher->dispatch(
-                'flat-deferred-export',
-                ['pw:flat:sync', '--consume-pending'],
-                'pw:flat:sync --consume-pending',
-            );
-        }
+        $this->messageBus->dispatch(new ConsumePendingExportMessage(), [new DelayStamp($this->debounceDelay * 1000)]);
     }
 
     /** @return array<string, array{type: string, id: int|null, host: string|null, action: string}> */

@@ -93,7 +93,6 @@ final class MediaSync
         // 4. Import storage files via Flysystem (works for both local and remote)
         // Storage is global (not per-host), so only scan and import once across all hosts
         if (! $this->storageImported) {
-            $this->mediaImporter->preloadMedia();
             $storageFiles = $this->collectStorageMediaFiles();
             $storageProgressBar = $this->createProgressBar(\count($storageFiles));
             $storageProgressBar?->start();
@@ -351,7 +350,7 @@ final class MediaSync
 
     private function isStorageFileNewer(string $storagePath): bool
     {
-        $media = $this->mediaRepository->findOneByFileName($storagePath);
+        $media = $this->mediaRepository->findOneBy(['fileName' => $storagePath]);
         if (! $media instanceof Media) {
             return true;
         }
@@ -366,7 +365,7 @@ final class MediaSync
             return false;
         }
 
-        $media = $this->mediaRepository->findOneByFileName($fileName);
+        $media = $this->mediaRepository->findOneBy(['fileName' => $fileName]);
         if (! $media instanceof Media) {
             return true;
         }
