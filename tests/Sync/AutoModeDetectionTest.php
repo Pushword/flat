@@ -31,6 +31,22 @@ final class AutoModeDetectionTest extends KernelTestCase
     /** @var string[] */
     private array $createdFiles = [];
 
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+
+        // Restore pristine DB: other tests in the same ParaTest worker may have
+        // modified pages, causing mustImport detection to give false positives.
+        $cacheFile = getenv('PUSHWORD_TEST_DB_CACHE_FILE');
+        $dbUrl = getenv('PUSHWORD_TEST_DATABASE_URL');
+        if (false !== $cacheFile && '' !== $cacheFile && false !== $dbUrl && file_exists($cacheFile)) {
+            $dbPath = preg_replace('#^sqlite:///+#', '/', $dbUrl);
+            if (null !== $dbPath && file_exists($dbPath)) {
+                copy($cacheFile, $dbPath);
+            }
+        }
+    }
+
     #[Override]
     protected function setUp(): void
     {
