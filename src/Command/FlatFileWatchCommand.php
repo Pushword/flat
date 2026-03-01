@@ -58,7 +58,11 @@ final readonly class FlatFileWatchCommand
             ++$cycle;
 
             foreach ($hosts as $host) {
-                if ($this->lockManager->isWebhookLocked($host) || $this->lockManager->isManualLock($host)) {
+                if ($this->lockManager->isWebhookLocked($host)) {
+                    continue;
+                }
+
+                if ($this->lockManager->isManualLock($host)) {
                     continue;
                 }
 
