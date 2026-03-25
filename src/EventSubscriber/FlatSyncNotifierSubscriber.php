@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Pushword\Flat\EventSubscriber;
 
 use Pushword\Flat\Admin\FlatSyncNotifier;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -16,7 +15,6 @@ final readonly class FlatSyncNotifierSubscriber implements EventSubscriberInterf
 {
     public function __construct(
         private FlatSyncNotifier $notifier,
-        private Security $security,
     ) {
     }
 
@@ -37,10 +35,6 @@ final readonly class FlatSyncNotifierSubscriber implements EventSubscriberInterf
         }
 
         if (! str_starts_with($event->getRequest()->getPathInfo(), '/admin')) {
-            return;
-        }
-
-        if (null === $this->security->getUser()) {
             return;
         }
 

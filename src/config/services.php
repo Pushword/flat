@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Pushword\Conversation\Flat\ConversationSync;
@@ -11,6 +9,7 @@ use Pushword\Flat\Controller\Admin\GitStatusController;
 use Pushword\Flat\Controller\Admin\NotificationCrudController;
 use Pushword\Flat\Controller\FlatLockApiController;
 use Pushword\Flat\Converter\FlatPropertyConverterInterface;
+use Pushword\Flat\Converter\PropertyConverterRegistry;
 use Pushword\Flat\EventSubscriber\LiveReloadSubscriber;
 use Pushword\Flat\FlatFileSync;
 use Pushword\Flat\Service\AdminNotificationService;
@@ -48,6 +47,10 @@ return static function (ContainerConfigurator $container): void {
             __DIR__.'/../'.PushwordCoreBundle::SERVICE_AUTOLOAD_EXCLUDE_PATH,
             ...$messengerExclude,
         ]);
+
+    // PropertyConverterRegistry - inject ignored properties list
+    $services->set(PropertyConverterRegistry::class)
+        ->arg('$ignoredProperties', '%pw.pushword_flat.ignored_properties%');
 
     // PageSync configuration
     $services->set(PageSync::class)

@@ -30,6 +30,7 @@ class FlatCommandTest extends KernelTestCase
         $commandTester->execute([
             'host' => 'pushword.piedweb.com',
             '--mode' => 'import',
+            '--no-backup' => true,
         ]);
 
         $output = $commandTester->getDisplay();

@@ -10,7 +10,6 @@ use Pushword\Flat\Admin\FlatSyncNotifier;
 use Pushword\Flat\EventSubscriber\FlatSyncNotifierSubscriber;
 use Pushword\Flat\Service\FlatLockManager;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -18,7 +17,6 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\Security\Core\User\InMemoryUser;
 
 #[Group('integration')]
 final class FlatSyncNotifierSubscriberTest extends KernelTestCase
@@ -65,7 +63,7 @@ final class FlatSyncNotifierSubscriberTest extends KernelTestCase
 
     public function testCallsNotifyAllOnAdminMainRequest(): void
     {
-        $subscriber = $this->createSubscriber(authenticated: true);
+        $subscriber = $this->createSubscriber();
         $event = $this->createRequestEvent('/admin/dashboard', HttpKernelInterface::MAIN_REQUEST);
 
         $subscriber->onKernelRequest($event);
@@ -75,7 +73,7 @@ final class FlatSyncNotifierSubscriberTest extends KernelTestCase
 
     public function testSkipsNonAdminRoutes(): void
     {
-        $subscriber = $this->createSubscriber(authenticated: true);
+        $subscriber = $this->createSubscriber();
         $event = $this->createRequestEvent('/page/hello', HttpKernelInterface::MAIN_REQUEST);
 
         $subscriber->onKernelRequest($event);
@@ -85,7 +83,7 @@ final class FlatSyncNotifierSubscriberTest extends KernelTestCase
 
     public function testSkipsSubRequests(): void
     {
-        $subscriber = $this->createSubscriber(authenticated: true);
+        $subscriber = $this->createSubscriber();
         $event = $this->createRequestEvent('/admin/dashboard', HttpKernelInterface::SUB_REQUEST);
 
         $subscriber->onKernelRequest($event);
@@ -93,27 +91,12 @@ final class FlatSyncNotifierSubscriberTest extends KernelTestCase
         self::assertSame([], $this->session->getFlashBag()->peekAll());
     }
 
-    public function testSkipsUnauthenticatedRequests(): void
-    {
-        $subscriber = $this->createSubscriber(authenticated: false);
-        $event = $this->createRequestEvent('/admin/dashboard', HttpKernelInterface::MAIN_REQUEST);
-
-        $subscriber->onKernelRequest($event);
-
-        self::assertSame([], $this->session->getFlashBag()->peekAll());
-    }
-
-    private function createSubscriber(bool $authenticated = true): FlatSyncNotifierSubscriber
+    private function createSubscriber(): FlatSyncNotifierSubscriber
     {
         /** @var FlatSyncNotifier $notifier */
         $notifier = self::getContainer()->get(FlatSyncNotifier::class);
 
-        $security = self::createStub(Security::class);
-        $security->method('getUser')->willReturn(
-            $authenticated ? new InMemoryUser('admin', null, ['ROLE_ADMIN']) : null,
-        );
-
-        return new FlatSyncNotifierSubscriber($notifier, $security);
+        return new FlatSyncNotifierSubscriber($notifier);
     }
 
     private function createRequestEvent(string $uri, int $requestType): RequestEvent
