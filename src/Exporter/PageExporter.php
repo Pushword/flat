@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Exporter;
 
 use DateTime;
@@ -301,11 +303,8 @@ final class PageExporter
         ];
     }
 
-    private function exportPage(Page $page, bool $force = false): bool
+    public function generatePageContent(Page $page): string
     {
-        $exportFilePath = $this->exportDir.'/'.$page->getSlug().'.md';
-
-        // Build content first to enable content comparison
         $baseProperties = ['title', 'h1', 'slug'];
         $entityProperties = $this->cachedEntityProperties ??= array_filter(
             Entity::getProperties($page),
@@ -337,7 +336,26 @@ final class PageExporter
         }
 
         $metaData = Yaml::dump($data, indent: 2);
-        $newContent = '---'.\PHP_EOL.$metaData.'---'.\PHP_EOL.\PHP_EOL.$page->getMainContent();
+
+        return '---'.\PHP_EOL.$metaData.'---'.\PHP_EOL.\PHP_EOL.$page->getMainContent();
+    }
+
+    private function exportPage(Page $page, bool $force = false): bool
+    {
+        $exportFilePath = $this->exportDir.'/'.$page->getSlug().'.md';
+
+        // Fast path: skip if file is newer than DB and not forced (avoids expensive content generation)
+        if (
+            false === $force
+            && $this->filesystem->exists($exportFilePath)
+            && filemtime($exportFilePath) >= $page->updatedAt->getTimestamp() // @phpstan-ignore method.nonObject
+        ) {
+            ++$this->skippedCount;
+
+            return false;
+        }
+
+        $newContent = $this->generatePageContent($page);
 
         // Skip if content unchanged (smart update to avoid unnecessary file writes)
         if ($this->filesystem->exists($exportFilePath)) {
@@ -347,17 +365,6 @@ final class PageExporter
 
                 return false;
             }
-        }
-
-        // Skip if file is newer and not forced (timestamp-based skip)
-        if (
-            false === $force
-            && $this->filesystem->exists($exportFilePath)
-            && filemtime($exportFilePath) >= $page->updatedAt->getTimestamp() // @phpstan-ignore method.nonObject
-        ) {
-            ++$this->skippedCount;
-
-            return false;
         }
 
         ++$this->exportedCount;
@@ -376,6 +383,14 @@ final class PageExporter
     {
         if ('mainContent' === $property) {
             return null;
+        }
+
+        if ('mainImage' === $property) {
+            return null !== $page->mainImage ? (string) $page->mainImage : null;
+        }
+
+        if ('template' === $property) {
+            return $page->template;
         }
 
         $getter = 'get'.ucfirst($property);
@@ -397,6 +412,23 @@ final class PageExporter
             }
 
             $currentHost = $this->apps->get()->getMainHost();
+
+            if ('translations' === $property) {
+                $siteLocale = $this->apps->get()->getLocale();
+                $isMainLocale = '' === $page->locale || $page->locale === $siteLocale;
+
+                if (! $isMainLocale) {
+                    $mainLocalePages = $value->filter(
+                        static fn (mixed $t): bool => $t instanceof Page
+                            && $t->host === $currentHost
+                            && ('' === $t->locale || $t->locale === $siteLocale)
+                    );
+                    if (! $mainLocalePages->isEmpty()) {
+                        $value = $mainLocalePages;
+                    }
+                }
+            }
+
             $slugs = [];
             foreach ($value as $item) {
                 if ($item instanceof Page) {
