@@ -255,8 +255,9 @@ final class MediaSync
 
         // Sync CSV timestamp with recorded sync time to prevent stale filemtime
         $csvPath ??= $this->contentDirFinder->getBaseDir().'/'.MediaExporter::CSV_FILE;
-        if (file_exists($csvPath)) {
-            touch($csvPath);
+        $syncTime = $this->stateManager->getLastSyncTime('media', $app->getMainHost());
+        if (file_exists($csvPath) && $syncTime > 0) {
+            touch($csvPath, $syncTime);
         }
     }
 
