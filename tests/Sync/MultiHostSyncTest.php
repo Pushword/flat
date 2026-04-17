@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
@@ -131,19 +133,17 @@ final class MultiHostSyncTest extends KernelTestCase
     {
         // Reset state
         $this->stateManager->resetState('localhost.dev');
-
-        // Capture host B state before exporting host A (may be non-zero from parallel tests)
-        $hostBTimeBefore = $this->stateManager->getLastSyncTime('page', 'pushword.piedweb.com');
+        $this->stateManager->resetState('pushword.piedweb.com');
 
         // Export host A
         $this->flatFileSync->export('localhost.dev');
 
-        // Host A should have state, host B should be unchanged
+        // Host A should have state, host B should not (yet)
         $hostATime = $this->stateManager->getLastSyncTime('page', 'localhost.dev');
         self::assertGreaterThan(0, $hostATime, 'Host A should have sync state after export');
 
         $hostBTime = $this->stateManager->getLastSyncTime('page', 'pushword.piedweb.com');
-        self::assertSame($hostBTimeBefore, $hostBTime, 'Exporting Host A should not change Host B sync state');
+        self::assertSame(0, $hostBTime, 'Host B should not have sync state yet');
 
         // Now export host B
         $this->flatFileSync->export('pushword.piedweb.com');

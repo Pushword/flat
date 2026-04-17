@@ -22,7 +22,7 @@ final class PageExporter
 {
     public const string INDEX_FILE = 'index.csv';
 
-    public const string DRAFT_INDEX_FILE = 'index.draft.csv';
+    public const string DRAFT_INDEX_FILE = 'iDraft.csv';
 
     public string $exportDir = '';
 
@@ -177,7 +177,7 @@ final class PageExporter
             $this->exportIndexForLocale($localePages, $filename);
         }
 
-        // Export draft pages to index.draft.csv
+        // Export draft pages to iDraft.csv
         foreach ($draftsByLocale as $locale => $localePages) {
             $filename = $this->getIndexFilename($locale, $defaultLocale, self::DRAFT_INDEX_FILE);
             $this->exportIndexForLocale($localePages, $filename);
@@ -301,8 +301,11 @@ final class PageExporter
         ];
     }
 
-    public function generatePageContent(Page $page): string
+    private function exportPage(Page $page, bool $force = false): bool
     {
+        $exportFilePath = $this->exportDir.'/'.$page->getSlug().'.md';
+
+        // Build content first to enable content comparison
         $baseProperties = ['title', 'h1', 'slug'];
         $entityProperties = $this->cachedEntityProperties ??= array_filter(
             Entity::getProperties($page),
@@ -334,36 +337,7 @@ final class PageExporter
         }
 
         $metaData = Yaml::dump($data, indent: 2);
-
-        return $this->normalizeQuotes('---'.\PHP_EOL.$metaData.'---'.\PHP_EOL.\PHP_EOL.$page->getMainContent());
-    }
-
-    private function normalizeQuotes(string $text): string
-    {
-        return strtr($text, [
-            "\u{2018}" => "'", // left single quote
-            "\u{2019}" => "'", // right single quote / apostrophe
-            "\u{201C}" => '"', // left double quote
-            "\u{201D}" => '"', // right double quote
-        ]);
-    }
-
-    private function exportPage(Page $page, bool $force = false): bool
-    {
-        $exportFilePath = $this->exportDir.'/'.$page->getSlug().'.md';
-
-        // Fast path: skip if file is newer than DB and not forced (avoids expensive content generation)
-        if (
-            false === $force
-            && $this->filesystem->exists($exportFilePath)
-            && filemtime($exportFilePath) >= $page->updatedAt->getTimestamp() // @phpstan-ignore method.nonObject
-        ) {
-            ++$this->skippedCount;
-
-            return false;
-        }
-
-        $newContent = $this->generatePageContent($page);
+        $newContent = '---'.\PHP_EOL.$metaData.'---'.\PHP_EOL.\PHP_EOL.$page->getMainContent();
 
         // Skip if content unchanged (smart update to avoid unnecessary file writes)
         if ($this->filesystem->exists($exportFilePath)) {
@@ -373,6 +347,17 @@ final class PageExporter
 
                 return false;
             }
+        }
+
+        // Skip if file is newer and not forced (timestamp-based skip)
+        if (
+            false === $force
+            && $this->filesystem->exists($exportFilePath)
+            && filemtime($exportFilePath) >= $page->updatedAt->getTimestamp() // @phpstan-ignore method.nonObject
+        ) {
+            ++$this->skippedCount;
+
+            return false;
         }
 
         ++$this->exportedCount;
@@ -391,14 +376,6 @@ final class PageExporter
     {
         if ('mainContent' === $property) {
             return null;
-        }
-
-        if ('mainImage' === $property) {
-            return null !== $page->mainImage ? (string) $page->mainImage : null;
-        }
-
-        if ('template' === $property) {
-            return $page->template;
         }
 
         $getter = 'get'.ucfirst($property);
@@ -420,23 +397,6 @@ final class PageExporter
             }
 
             $currentHost = $this->apps->get()->getMainHost();
-
-            if ('translations' === $property) {
-                $siteLocale = $this->apps->get()->getLocale();
-                $isMainLocale = '' === $page->locale || $page->locale === $siteLocale;
-
-                if (! $isMainLocale) {
-                    $mainLocalePages = $value->filter(
-                        static fn (mixed $t): bool => $t instanceof Page
-                            && $t->host === $currentHost
-                            && ('' === $t->locale || $t->locale === $siteLocale)
-                    );
-                    if (! $mainLocalePages->isEmpty()) {
-                        $value = $mainLocalePages;
-                    }
-                }
-            }
-
             $slugs = [];
             foreach ($value as $item) {
                 if ($item instanceof Page) {

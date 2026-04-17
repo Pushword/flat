@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Command;
 
 use Override;
@@ -63,14 +65,13 @@ final class ConcurrentSyncTest extends KernelTestCase
         $pidFile = sys_get_temp_dir().'/pushword-test-concurrent-'.getmypid().'.pid';
         $this->cleanupFiles[] = $pidFile;
 
-        // Use PID 1 (init/systemd) — always running and not the current process
-        $alivePid = 1;
-        $pidData = json_encode(['pid' => $alivePid, 'startTime' => time(), 'commandPattern' => ''], \JSON_THROW_ON_ERROR);
+        $parentPid = posix_getppid();
+        $pidData = json_encode(['pid' => $parentPid, 'startTime' => time(), 'commandPattern' => ''], \JSON_THROW_ON_ERROR);
         $this->filesystem->dumpFile($pidFile, $pidData);
 
         $info = $this->processManager->getProcessInfo($pidFile);
-        self::assertTrue($info['isRunning'], 'Process with PID 1 should be detected as running');
-        self::assertSame($alivePid, $info['pid']);
+        self::assertTrue($info['isRunning'], 'Process with parent PID should be detected as running');
+        self::assertSame($parentPid, $info['pid']);
     }
 
     public function testStaleProcessDetected(): void

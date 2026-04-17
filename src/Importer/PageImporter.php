@@ -94,7 +94,7 @@ final class PageImporter extends AbstractImporter
           || str_ends_with($filePath, 'conversation.csv')
           || str_ends_with($filePath, 'redirection.csv')
           || 1 === preg_match('/^index(\.[a-z]{2}(-[a-zA-Z]{2,})?)?\.csv$/', $filename)
-          || 1 === preg_match('/^index\.draft(\.[a-z]{2}(-[a-zA-Z]{2,})?)?\.csv$/', $filename)
+          || 1 === preg_match('/^iDraft(\.[a-z]{2}(-[a-zA-Z]{2,})?)?\.csv$/', $filename)
         ) {
             return null;
         }
@@ -162,7 +162,7 @@ final class PageImporter extends AbstractImporter
     /**
      * @return non-empty-string
      */
-    public function filePathToSlug(string $filePath): string
+    private function filePathToSlug(string $filePath): string
     {
         $slug = preg_replace('/\.md$/i', '', str_replace($this->getContentDir().'/', '', $filePath)) ?? throw new Exception(\sprintf('Failed to extract slug from file path "%s"', $filePath));
 
@@ -268,10 +268,7 @@ final class PageImporter extends AbstractImporter
                 continue;
             }
 
-            $converted = $this->converterRegistry->fromFlatValue($key, $value);
-            if (null !== $converted) {
-                $page->setCustomProperty($key, $converted);
-            }
+            $page->setCustomProperty($key, $this->converterRegistry->fromFlatValue($key, $value));
         }
 
         $page->host = $this->apps->get()->getMainHost();
@@ -285,9 +282,6 @@ final class PageImporter extends AbstractImporter
         if ($this->newPage) {
             $this->initDateTimeProperties($page, $lastEditDateTime, $publishedAtExplicitlySet);
             $this->em->persist($page);
-        } else {
-            $page->updatedAt = $lastEditDateTime;
-            $page->setSkipAutoTimestamp(true);
         }
 
         return $page;
@@ -411,7 +405,7 @@ final class PageImporter extends AbstractImporter
         $toAdd = array_diff($newTranslationRefs, $currentRefs);
         $toRemove = array_diff($currentRefs, $newTranslationRefs);
 
-        // First, add new translations and mark them (including transitive pairs)
+        // First, add new translations and mark them
         foreach ($toAdd as $ref) {
             $translationPage = $this->resolveTranslationRef($ref);
             if (! $translationPage instanceof Page) {
@@ -422,18 +416,6 @@ final class PageImporter extends AbstractImporter
 
             $page->addTranslation($translationPage);
             $this->markTranslationAsAdded($pageSlug, $ref);
-        }
-
-        // Mark all transitive pairs created by recursive addTranslation
-        if ([] !== $toAdd) {
-            $allRefs = array_map($this->buildTranslationRef(...), $page->getTranslations()->toArray());
-            foreach ($allRefs as $refA) {
-                foreach ($allRefs as $refB) {
-                    if ($refA !== $refB) {
-                        $this->markTranslationAsAdded($refA, $refB);
-                    }
-                }
-            }
         }
 
         // Then, remove translations only if they weren't added by another page

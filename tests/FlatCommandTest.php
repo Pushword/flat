@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests;
 
 use PHPUnit\Framework\Attributes\Group;
@@ -28,6 +30,7 @@ class FlatCommandTest extends KernelTestCase
         $commandTester->execute([
             'host' => 'pushword.piedweb.com',
             '--mode' => 'import',
+            '--no-backup' => true,
         ]);
 
         $output = $commandTester->getDisplay();
