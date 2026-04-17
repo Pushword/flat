@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Pushword\Flat\Sync;
 
 use DateTime;
@@ -18,12 +16,18 @@ use Pushword\Flat\Importer\PageImporter;
 use Pushword\Flat\Importer\RedirectionImporter;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 final class PageSync
 {
     private int $deletedCount = 0;
 
+    /** @var string[] */
+    private array $yamlErrorSlugs = [];
+
     private ?OutputInterface $output = null;
+
+    private ?Stopwatch $stopwatch = null;
 
     public function __construct(
         private readonly SiteRegistry $apps,
@@ -51,12 +55,16 @@ final class PageSync
 
     public function setStopwatch(?Stopwatch $stopwatch): void
     {
-        // Stopwatch passed for interface consistency but not used in PageSync
+        $this->stopwatch = $stopwatch;
     }
 
     public function sync(?string $host = null, bool $forceExport = false, ?string $exportDir = null): void
     {
-        if (! $forceExport && $this->mustImport($host)) {
+        $this->stopwatch?->start('page.detection');
+        $shouldImport = ! $forceExport && $this->mustImport($host);
+        $this->stopwatch?->stop('page.detection');
+
+        if ($shouldImport) {
             $this->import($host);
 
             return;
@@ -83,8 +91,9 @@ final class PageSync
             $this->redirectionImporter->importAll();
         }
 
-        // 2. Reset page importer
+        // 2. Reset page importer and YAML error tracking
         $this->pageImporter->resetImport();
+        $this->yamlErrorSlugs = [];
 
         // 3. Collect all .md files first for progress display
         $files = $this->collectMarkdownFiles($contentDir);
@@ -92,7 +101,25 @@ final class PageSync
         // 4. Import all .md files with progress (only show actually imported files)
         foreach ($files as $path) {
             $lastEditDateTime = new DateTime()->setTimestamp((int) filemtime($path));
-            $imported = $this->pageImporter->import($path, $lastEditDateTime);
+
+            try {
+                $imported = $this->pageImporter->import($path, $lastEditDateTime);
+            } catch (ParseException $e) {
+                $relativePath = str_replace($contentDir.'/', '', $path);
+                $this->output?->writeln(\sprintf(
+                    '<error>YAML error in %s (line %d): %s</error>',
+                    $relativePath,
+                    $e->getParsedLine(),
+                    $e->getMessage(),
+                ));
+                $this->logger?->error('YAML parse error in {file}: {message}', [
+                    'file' => $path,
+                    'message' => $e->getMessage(),
+                ]);
+                $this->yamlErrorSlugs[] = $this->pageImporter->filePathToSlug($path);
+
+                continue;
+            }
 
             if ($imported) {
                 $relativePath = str_replace($contentDir.'/', '', $path);
@@ -183,7 +210,7 @@ final class PageSync
         $app = $this->resolveApp($host);
         $targetDir = $exportDir ?? $this->contentDirFinder->get($app->getMainHost());
 
-        // Export pages (.md files + index.csv + iDraft.csv)
+        // Export pages (.md files + index.csv + index.draft.csv)
         $this->pageExporter->exportDir = $targetDir;
         $this->pageExporter->exportPages($force);
 
@@ -200,21 +227,79 @@ final class PageSync
         $app = $this->resolveApp($host);
         $mainHost = $app->getMainHost();
         $contentDir = $this->contentDirFinder->get($mainHost);
+        $lastSyncTime = $this->stateManager->getLastSyncTime('page', $mainHost);
 
-        // Pre-load all pages for this host once, build slug index
+        // Fast path: when we have a sync baseline, use filemtime only (no YAML parsing)
+        if ($lastSyncTime > 0) {
+            return $this->hasNewerFilesFast($contentDir, $lastSyncTime);
+        }
+
+        // Slow path (first sync): full YAML-based detection with slug matching
         $pages = $this->pageRepository->findByHost($mainHost);
         $slugIndex = [];
         foreach ($pages as $page) {
             $slugIndex[$page->getSlug()] = $page;
         }
 
-        return $this->hasNewerFiles($contentDir, $mainHost, $slugIndex);
+        $lastSyncTime = $this->stateManager->getLastSyncTime('page', $mainHost);
+
+        return $this->hasNewerFiles($contentDir, $mainHost, $slugIndex, $lastSyncTime);
+    }
+
+    /**
+     * Fast direction detection using only filemtime comparison.
+     * Used when lastSyncTime > 0 (not first sync).
+     */
+    private function hasNewerFilesFast(string $dir, int $lastSyncTime): bool
+    {
+        if (! file_exists($dir)) {
+            return false;
+        }
+
+        /** @var string[] $entries */
+        $entries = scandir($dir);
+        foreach ($entries as $entry) {
+            if (\in_array($entry, ['.', '..'], true)) {
+                continue;
+            }
+
+            if (\in_array($entry, $this->excludeFiles, true)) {
+                continue;
+            }
+
+            if (str_ends_with($entry, '~')) {
+                continue;
+            }
+
+            if (str_contains($entry, '~conflict-')) {
+                continue;
+            }
+
+            $path = $dir.'/'.$entry;
+            if (is_dir($path)) {
+                if ($this->hasNewerFilesFast($path, $lastSyncTime)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (! str_ends_with($entry, '.md') && ! str_ends_with($entry, '.csv')) {
+                continue;
+            }
+
+            if (filemtime($path) > $lastSyncTime) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * @param array<string, Page> $slugIndex
      */
-    private function hasNewerFiles(string $dir, string $host, array $slugIndex): bool
+    private function hasNewerFiles(string $dir, string $host, array $slugIndex, int $lastSyncTime): bool
     {
         if (! file_exists($dir)) {
             return false;
@@ -233,14 +318,14 @@ final class PageSync
 
             $path = $dir.'/'.$file;
             if (is_dir($path)) {
-                if ($this->hasNewerFiles($path, $host, $slugIndex)) {
+                if ($this->hasNewerFiles($path, $host, $slugIndex, $lastSyncTime)) {
                     return true;
                 }
 
                 continue;
             }
 
-            if ($this->isFileNewer($path, $host, $slugIndex)) {
+            if ($this->isFileNewer($path, $host, $slugIndex, $lastSyncTime)) {
                 return true;
             }
         }
@@ -251,17 +336,27 @@ final class PageSync
     /**
      * @param array<string, Page> $slugIndex
      */
-    private function isFileNewer(string $filePath, string $host, array $slugIndex): bool
+    private function isFileNewer(string $filePath, string $host, array $slugIndex, int $lastSyncTime): bool
     {
         if (str_ends_with($filePath, RedirectionExporter::INDEX_FILE)) {
-            return $this->isCsvFileNewer($filePath, $host);
+            return $this->isCsvFileNewer($filePath, $lastSyncTime);
         }
 
         if (! str_ends_with($filePath, '.md')) {
             return false;
         }
 
-        $document = $this->pageImporter->getDocumentFromFile($filePath);
+        // Fast path: if file hasn't changed since last sync, skip expensive YAML parsing
+        if ($lastSyncTime > 0 && (int) filemtime($filePath) <= $lastSyncTime) {
+            return false;
+        }
+
+        try {
+            $document = $this->pageImporter->getDocumentFromFile($filePath);
+        } catch (ParseException) {
+            return true; // Trigger import where the error will be reported
+        }
+
         if (null === $document) {
             return true;
         }
@@ -276,18 +371,29 @@ final class PageSync
         $lastEditDateTime = new DateTime()->setTimestamp((int) filemtime($filePath));
 
         // Check for conflicts using the last sync time
-        $lastSyncTime = $this->stateManager->getLastSyncTime('page', $host);
         if ($lastSyncTime > 0) {
             $lastSyncAt = new DateTime('@'.$lastSyncTime);
+            $bothModified = $lastEditDateTime > $lastSyncAt && $page->updatedAt > $lastSyncAt;
+
+            // Only read content when both sides modified (expensive, skip for one-sided changes)
+            $fileContent = null;
+            $dbContent = null;
+            if ($bothModified) {
+                $readResult = @file_get_contents($filePath);
+                $fileContent = false !== $readResult ? $readResult : null;
+                $dbContent = $this->pageExporter->generatePageContent($page);
+            }
+
             $conflict = $this->conflictResolver->resolvePageConflict(
                 $page,
                 $filePath,
                 $lastEditDateTime,
                 $lastSyncAt,
+                $fileContent,
+                $dbContent,
             );
 
             if ($conflict['hasConflict']) {
-                // If there's a conflict, flat wins means we should import
                 return 'flat' === $conflict['winner'];
             }
         }
@@ -295,9 +401,8 @@ final class PageSync
         return $lastEditDateTime > $page->updatedAt;
     }
 
-    private function isCsvFileNewer(string $filePath, string $host): bool
+    private function isCsvFileNewer(string $filePath, int $lastSyncTime): bool
     {
-        $lastSyncTime = $this->stateManager->getLastSyncTime('page', $host);
         if (0 === $lastSyncTime) {
             return true;
         }
@@ -341,6 +446,7 @@ final class PageSync
 
         $importedSlugSet = array_flip($this->pageImporter->getImportedSlugs());
         $redirectionSlugSet = array_flip($this->redirectionImporter->getImportedSlugs());
+        $yamlErrorSlugSet = array_flip($this->yamlErrorSlugs);
 
         foreach ($allPages as $page) {
             $slug = $page->getSlug();
@@ -352,6 +458,11 @@ final class PageSync
 
             // Skip if page is a redirection imported from redirection.csv
             if (isset($redirectionSlugSet[$slug])) {
+                continue;
+            }
+
+            // Skip if page's flat file had a YAML error (don't delete due to a typo)
+            if (isset($yamlErrorSlugSet[$slug])) {
                 continue;
             }
 
@@ -394,5 +505,10 @@ final class PageSync
     public function getExportSkippedCount(): int
     {
         return $this->pageExporter->getSkippedCount();
+    }
+
+    public function getYamlErrorCount(): int
+    {
+        return \count($this->yamlErrorSlugs);
     }
 }

@@ -101,9 +101,6 @@ trait ImageImporterTrait
         if ($imgSize[0] > self::MAX_IMAGE_WIDTH || $imgSize[1] > self::MAX_IMAGE_HEIGHT) {
             $this->resizeOversizedImage($filePath, $imgSize[0], $imgSize[1]);
             $imgSize = getimagesize($filePath);
-            if (false === $imgSize) {
-                throw new RuntimeException('Image size could not be determined after resize');
-            }
         }
 
         $resolvedFileName = $fileName ?? $media->getFileName();
@@ -122,7 +119,7 @@ trait ImageImporterTrait
 
         // Trigger background cache generation for responsive variants + WebP
         if ($this->newMedia) {
-            $this->thumbnailGenerator->runBackgroundCacheGeneration($resolvedFileName);
+            $this->imageCacheGenerator->runBackgroundCacheGeneration($resolvedFileName);
         }
     }
 
@@ -130,7 +127,7 @@ trait ImageImporterTrait
     {
         $this->logger?->info(\sprintf('Resizing oversized image %s (%dx%d → max %dx%d)', basename($filePath), $width, $height, self::MAX_IMAGE_WIDTH, self::MAX_IMAGE_HEIGHT));
 
-        $image = $this->thumbnailGenerator->getImageReader()->read($filePath);
+        $image = $this->imageCacheGenerator->getImageReader()->read($filePath);
         $image = $image->scaleDown(self::MAX_IMAGE_WIDTH, self::MAX_IMAGE_HEIGHT);
         $image->encode(new AutoEncoder(quality: 90))->save($filePath);
 

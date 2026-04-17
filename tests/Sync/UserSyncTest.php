@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
@@ -168,7 +166,7 @@ final class UserSyncTest extends KernelTestCase
                 $yamlUsers[] = [
                     'email' => $existingUser->email,
                     'roles' => $existingUser->getRoles(),
-                    'locale' => $existingUser->locale ?? 'en',
+                    'locale' => $existingUser->locale,
                 ];
             }
         }
@@ -230,7 +228,7 @@ final class UserSyncTest extends KernelTestCase
                 $allUsers[] = [
                     'email' => $existingUser->email,
                     'roles' => $existingUser->getRoles(),
-                    'locale' => $existingUser->locale ?? 'en',
+                    'locale' => $existingUser->locale,
                 ];
             }
         }

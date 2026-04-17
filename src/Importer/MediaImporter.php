@@ -9,8 +9,8 @@ use League\Csv\Reader;
 use Override;
 use Psr\Log\LoggerInterface;
 use Pushword\Core\Entity\Media;
+use Pushword\Core\Image\ImageCacheGenerator;
 use Pushword\Core\Image\ImageCacheManager;
-use Pushword\Core\Image\ThumbnailGenerator;
 use Pushword\Core\Repository\MediaRepository;
 use Pushword\Core\Service\MediaStorageAdapter;
 use Pushword\Core\Site\SiteRegistry;
@@ -39,6 +39,9 @@ class MediaImporter extends AbstractImporter
     /** @var string[] */
     private array $missingFiles = [];
 
+    /** @var array<string, Media>|null Hash → Media index for O(1) duplicate detection */
+    private ?array $hashIndex = null;
+
     private int $importedCount = 0;
 
     private int $skippedCount = 0;
@@ -49,7 +52,7 @@ class MediaImporter extends AbstractImporter
         public string $mediaDir,
         public string $projectDir,
         private readonly MediaStorageAdapter $mediaStorage,
-        private readonly ThumbnailGenerator $thumbnailGenerator,
+        private readonly ImageCacheGenerator $imageCacheGenerator,
         private readonly ImageCacheManager $imageCacheManager,
         private readonly MediaRepository $mediaRepository,
         private readonly ?LoggerInterface $logger = null,
@@ -569,32 +572,45 @@ class MediaImporter extends AbstractImporter
             }
         }
 
-        // 2. Check all existing media (duplicate detection)
-        $allMedia = $this->mediaRepository->findAll();
-        foreach ($allMedia as $existingMedia) {
-            if ($existingMedia->getFileName() === $newFileName) {
-                continue; // Skip self-match
+        // 2. Check all existing media via hash index (duplicate detection)
+        $this->buildHashIndexIfNeeded();
+        $existingMedia = $this->hashIndex[$fileHash] ?? null;
+        if ($existingMedia instanceof Media && $existingMedia->getFileName() !== $newFileName) {
+            $this->logger?->info(\sprintf('Duplicate detected: "%s" has same hash as existing media "%s" (id: %s) — deleting duplicate', $newFileName, $existingMedia->getFileName(), $existingMedia->id));
+            $existingMedia->addFileNameToHistory($newFileName);
+
+            // Delete the duplicate file
+            if ($this->mediaStorage->fileExists($newFileName)) {
+                $this->mediaStorage->delete($newFileName);
+            } elseif (file_exists($filePath)) {
+                @unlink($filePath);
             }
 
-            if ($fileHash === $this->getMediaHash($existingMedia)) {
-                $this->logger?->info(\sprintf('Duplicate detected: "%s" has same hash as existing media "%s" (id: %s) — deleting duplicate', $newFileName, $existingMedia->getFileName(), $existingMedia->id));
-                $existingMedia->addFileNameToHistory($newFileName);
+            $this->newMedia = false;
+            $this->duplicateSkipped = true;
 
-                // Delete the duplicate file
-                if ($this->mediaStorage->fileExists($newFileName)) {
-                    $this->mediaStorage->delete($newFileName);
-                } elseif (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
-
-                $this->newMedia = false;
-                $this->duplicateSkipped = true;
-
-                return $existingMedia;
-            }
+            return $existingMedia;
         }
 
         return null;
+    }
+
+    /**
+     * Build hash → Media index once for O(1) duplicate detection.
+     */
+    private function buildHashIndexIfNeeded(): void
+    {
+        if (null !== $this->hashIndex) {
+            return;
+        }
+
+        $this->hashIndex = [];
+        foreach ($this->mediaRepository->findAll() as $media) {
+            $hash = $this->getMediaHash($media);
+            if (null !== $hash) {
+                $this->hashIndex[$hash] = $media;
+            }
+        }
     }
 
     public function resetIndex(): void
@@ -603,6 +619,7 @@ class MediaImporter extends AbstractImporter
         $this->altLocaleColumns = [];
         $this->customColumns = [];
         $this->missingFiles = [];
+        $this->hashIndex = null;
         $this->importedCount = 0;
         $this->skippedCount = 0;
         $this->duplicateSkipped = false;

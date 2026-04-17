@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Pushword\Flat\Command;
 
 use Pushword\Core\Service\BackgroundProcessManager;
@@ -57,8 +55,8 @@ final readonly class FlatFileSyncCommand
         string $entity = 'all',
         #[Option(description: 'Sync mode: auto (detect), import (flat to db), export (db to flat)', name: 'mode', shortcut: 'm')]
         string $mode = 'auto',
-        #[Option(description: 'Disable automatic database backup before import', name: 'no-backup')]
-        bool $doBackup = true,
+        #[Option(description: 'Create a database backup before import', name: 'backup')]
+        bool $backup = false,
         #[Option(description: 'Consume pending export flag and run batched export', name: 'consume-pending')]
         bool $consumePending = false,
     ): int {
@@ -120,7 +118,7 @@ final readonly class FlatFileSyncCommand
 
             // Backup database before import (unless disabled)
             $willImport = 'import' === $mode || 'auto' === $mode;
-            if ($willImport && $doBackup && $this->filesystem->exists('var/app.db')) {
+            if ($willImport && $backup && $this->filesystem->exists('var/app.db')) {
                 $backupFileName = 'var/app.db~'.date('YmdHis');
                 $this->filesystem->copy('var/app.db', $backupFileName);
                 $teeOutput->writeln(\sprintf('<comment>Database backup created: %s</comment>', $backupFileName));
@@ -230,7 +228,9 @@ final readonly class FlatFileSyncCommand
             ? ($hasImportOps ? 'import' : ($hasExportOps ? 'export' : 'auto'))
             : $mode;
 
-        if (! $hasImportOps && ! $hasExportOps) {
+        $yamlErrors = $pageSync->getYamlErrorCount();
+
+        if (! $hasImportOps && ! $hasExportOps && 0 === $yamlErrors) {
             $io->success(\sprintf('Sync completed (%s mode - no changes detected). (%dms)', $displayMode, $duration));
 
             return;
@@ -251,6 +251,10 @@ final readonly class FlatFileSyncCommand
                 ['Pages', $pageSync->getExportedCount(), $pageSync->getExportSkippedCount()],
             ]);
         }
+
+        if ($yamlErrors > 0) {
+            $io->warning(\sprintf('%d file(s) skipped due to YAML front matter errors. Run `pw:flat:lint` for details.', $yamlErrors));
+        }
     }
 
     private function printTimingBreakdown(OutputInterface $output): void
@@ -258,7 +262,7 @@ final readonly class FlatFileSyncCommand
         $sections = $this->stopWatch->getSections();
         $timings = [];
 
-        $allowedEvents = ['media.sync', 'page.sync', 'conversation.sync'];
+        $allowedEvents = ['media.sync', 'page.sync', 'conversation.sync', 'media.detection', 'page.detection'];
 
         foreach ($sections as $section) {
             foreach ($section->getEvents() as $name => $event) {
@@ -272,17 +276,25 @@ final readonly class FlatFileSyncCommand
             return;
         }
 
-        arsort($timings);
-
+        // Build display with detection sub-timings
         $parts = [];
-        foreach ($timings as $name => $duration) {
+        foreach (['media.sync', 'page.sync', 'conversation.sync'] as $name) {
+            if (! isset($timings[$name])) {
+                continue;
+            }
+
             $shortName = match ($name) {
                 'media.sync' => 'media',
                 'page.sync' => 'pages',
-                'conversation.sync' => 'conversation', // @phpstan-ignore match.alwaysTrue
-                default => $name,
+                'conversation.sync' => 'conversation',
             };
-            $parts[] = \sprintf('%s: %dms', $shortName, $duration);
+
+            $detectionKey = str_replace('.sync', '.detection', $name);
+            $detectionMs = $timings[$detectionKey] ?? null;
+
+            $parts[] = null !== $detectionMs
+                ? \sprintf('%s: %dms (detection: %dms)', $shortName, $timings[$name], $detectionMs)
+                : \sprintf('%s: %dms', $shortName, $timings[$name]);
         }
 
         $output->writeln('<comment>⏱ '.implode(' | ', $parts).'</comment>');

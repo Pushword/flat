@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Pushword\Flat\Sync;
 
 use DateTime;
@@ -24,6 +22,14 @@ final class MediaSync
     private int $deletedCount = 0;
 
     private bool $storageImported = false;
+
+    private bool $csvExported = false;
+
+    /** @var array{result: bool, lastSyncTime: int}|null */
+    private ?array $globalMediaDirScanCache = null;
+
+    /** @var array<string, Media>|null */
+    private ?array $mediaIndexCache = null;
 
     private ?OutputInterface $output = null;
 
@@ -56,7 +62,11 @@ final class MediaSync
 
     public function sync(?string $host = null, bool $forceExport = false, ?string $exportDir = null): void
     {
-        if (! $forceExport && $this->mustImport($host)) {
+        $this->stopwatch?->start('media.detection');
+        $shouldImport = ! $forceExport && $this->mustImport($host);
+        $this->stopwatch?->stop('media.detection');
+
+        if ($shouldImport) {
             $this->import($host);
 
             return;
@@ -221,14 +231,32 @@ final class MediaSync
         $app = $this->resolveApp($host);
         $targetDir = $exportDir ?? $this->contentDirFinder->get($app->getMainHost());
 
-        $this->measure('media_export', function () use ($targetDir): void {
-            $this->mediaExporter->csvDir = $this->contentDirFinder->getBaseDir();
-            $this->mediaExporter->exportDir = $targetDir;
-            $this->mediaExporter->exportMedias();
-        });
+        // Media CSV is global — only export once across all hosts
+        if (! $this->csvExported || null !== $exportDir) {
+            $csvPath = $this->contentDirFinder->getBaseDir().'/'.MediaExporter::CSV_FILE;
+            $lastSyncTime = $this->stateManager->getLastSyncTime('media', $app->getMainHost());
+
+            // Skip CSV regeneration if no media changed since last sync
+            if ($force || ! file_exists($csvPath) || 0 === $lastSyncTime || filemtime($csvPath) < $lastSyncTime) {
+                $this->measure('media_export', function () use ($targetDir): void {
+                    $this->mediaExporter->csvDir = $this->contentDirFinder->getBaseDir();
+                    $this->mediaExporter->exportDir = $targetDir;
+                    $this->mediaExporter->exportMedias();
+                });
+            }
+
+            $this->csvExported = true;
+        }
 
         // Record export in sync state
         $this->stateManager->recordExport('media', $app->getMainHost());
+
+        // Sync CSV timestamp with recorded sync time to prevent stale filemtime
+        $csvPath ??= $this->contentDirFinder->getBaseDir().'/'.MediaExporter::CSV_FILE;
+        $syncTime = $this->stateManager->getLastSyncTime('media', $app->getMainHost());
+        if (file_exists($csvPath) && $syncTime > 0) {
+            touch($csvPath, $syncTime);
+        }
     }
 
     public function mustImport(?string $host = null): bool
@@ -239,7 +267,40 @@ final class MediaSync
         $contentDir = $this->contentDirFinder->get($app->getMainHost());
         $lastSyncTime = $this->stateManager->getLastSyncTime('media', $app->getMainHost());
 
-        return array_any($this->getDirectoriesToScan($contentDir), fn (string $directory): bool => $this->hasNewerFiles($directory, $lastSyncTime));
+        // Preload all media into an index to avoid per-file DB queries (cached across hosts)
+        if (null === $this->mediaIndexCache) {
+            $allMedia = $this->mediaRepository->findAll();
+            $this->mediaIndexCache = [];
+            foreach ($allMedia as $media) {
+                $this->mediaIndexCache[$media->getFileName()] = $media;
+            }
+        }
+
+        $mediaIndex = $this->mediaIndexCache;
+
+        foreach ($this->getDirectoriesToScan($contentDir) as $directory) {
+            if ($directory === $this->mediaDir && null !== $this->globalMediaDirScanCache) {
+                if ($this->globalMediaDirScanCache['result']) {
+                    return true;
+                }
+
+                if ($lastSyncTime >= $this->globalMediaDirScanCache['lastSyncTime']) {
+                    continue;
+                }
+            }
+
+            $result = $this->hasNewerFiles($directory, $lastSyncTime, $mediaIndex);
+
+            if ($directory === $this->mediaDir) {
+                $this->globalMediaDirScanCache = ['result' => $result, 'lastSyncTime' => $lastSyncTime];
+            }
+
+            if ($result) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -260,10 +321,13 @@ final class MediaSync
         return $dirs;
     }
 
-    private function hasNewerFiles(string $dir, int $lastSyncTime = 0): bool
+    /**
+     * @param array<string, Media> $mediaIndex
+     */
+    private function hasNewerFiles(string $dir, int $lastSyncTime, array $mediaIndex): bool
     {
         if ($dir === $this->mediaDir && ! $this->mediaStorage->isLocal()) {
-            return $this->hasNewerStorageFiles($lastSyncTime);
+            return $this->hasNewerStorageFiles($lastSyncTime, $mediaIndex);
         }
 
         if (! file_exists($dir)) {
@@ -283,14 +347,14 @@ final class MediaSync
 
             $path = $dir.'/'.$file;
             if (is_dir($path)) {
-                if ($this->hasNewerFiles($path, $lastSyncTime)) {
+                if ($this->hasNewerFiles($path, $lastSyncTime, $mediaIndex)) {
                     return true;
                 }
 
                 continue;
             }
 
-            if ($this->isFileNewer($path)) {
+            if ($this->isFileNewer($path, $lastSyncTime, $mediaIndex)) {
                 return true;
             }
         }
@@ -298,7 +362,10 @@ final class MediaSync
         return false;
     }
 
-    private function hasNewerStorageFiles(int $lastSyncTime): bool
+    /**
+     * @param array<string, Media> $mediaIndex
+     */
+    private function hasNewerStorageFiles(int $lastSyncTime, array $mediaIndex): bool
     {
         $progressBar = null;
         if (null !== $this->output) {
@@ -336,7 +403,7 @@ final class MediaSync
             ++$checked;
             $progressBar?->setMessage(\sprintf('%d modified since last sync', $checked));
 
-            if ($this->isStorageFileNewer($path)) {
+            if ($this->isStorageFileNewer($path, $mediaIndex)) {
                 $hasNewer = true;
 
                 break;
@@ -350,9 +417,12 @@ final class MediaSync
         return $hasNewer;
     }
 
-    private function isStorageFileNewer(string $storagePath): bool
+    /**
+     * @param array<string, Media> $mediaIndex
+     */
+    private function isStorageFileNewer(string $storagePath, array $mediaIndex): bool
     {
-        $media = $this->mediaRepository->findOneByFileName($storagePath);
+        $media = $mediaIndex[$storagePath] ?? null;
         if (! $media instanceof Media) {
             return true;
         }
@@ -360,16 +430,24 @@ final class MediaSync
         return $this->isMediaHashDifferent($media, $this->mediaStorage->getLocalPath($storagePath));
     }
 
-    private function isFileNewer(string $filePath): bool
+    /**
+     * @param array<string, Media> $mediaIndex
+     */
+    private function isFileNewer(string $filePath, int $lastSyncTime, array $mediaIndex): bool
     {
         $fileName = $this->extractMediaName($filePath);
         if ('' === $fileName) {
             return false;
         }
 
-        $media = $this->mediaRepository->findOneByFileName($fileName);
+        $media = $mediaIndex[$fileName] ?? null;
         if (! $media instanceof Media) {
-            return true;
+            return true; // New file — always triggers import
+        }
+
+        // Fast path: skip expensive hash check if file hasn't been modified since last sync
+        if ($lastSyncTime > 0 && filemtime($filePath) <= $lastSyncTime) {
+            return false;
         }
 
         return $this->isMediaHashDifferent($media, $filePath);

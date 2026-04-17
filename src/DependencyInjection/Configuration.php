@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Pushword\Flat\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -65,6 +63,11 @@ class Configuration implements ConfigurationInterface
             ->scalarNode('notification_email_from')
               ->defaultNull()
               ->info('Sender email address for notifications')
+            ->end()
+            ->arrayNode('ignored_properties')
+              ->scalarPrototype()->end()
+              ->defaultValue([])
+              ->info('Custom property names to exclude from flat file export and import')
             ->end()
         ->end();
 
