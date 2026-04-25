@@ -34,7 +34,6 @@ final class DeferredExportProcessorTest extends KernelTestCase
         mkdir($this->tempDir, 0755, true);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         $fs = new Filesystem();
@@ -267,7 +266,6 @@ final class DeferredExportProcessorTest extends KernelTestCase
         $processor = new DeferredExportProcessor(
             $this->tempDir,
             $dispatcher,
-            null,
         );
 
         $processor->queue($this->createPage(1, 'example.com'), 'update');

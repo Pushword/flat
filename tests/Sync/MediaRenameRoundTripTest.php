@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
@@ -28,7 +30,6 @@ final class MediaRenameRoundTripTest extends KernelTestCase
         $this->em = $em;
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->tempFiles as $file) {
@@ -71,8 +72,6 @@ final class MediaRenameRoundTripTest extends KernelTestCase
 
         $this->em->persist($media);
         $this->em->flush();
-
-        $mediaId = $media->id;
 
         // Export to get CSV with fileNameHistory
         /** @var FlatFileContentDirFinder $contentDirFinder */

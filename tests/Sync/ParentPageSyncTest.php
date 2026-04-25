@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
@@ -49,7 +51,6 @@ final class ParentPageSyncTest extends KernelTestCase
         $this->pageSync->export('localhost.dev', true, $this->contentDir);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {
@@ -65,7 +66,6 @@ final class ParentPageSyncTest extends KernelTestCase
         }
 
         $this->em->flush();
-
         foreach ($this->testSlugs as $slug) {
             $page = $this->em->getRepository(Page::class)->findOneBy(['slug' => $slug, 'host' => 'localhost.dev']);
             if ($page instanceof Page) {
@@ -74,7 +74,6 @@ final class ParentPageSyncTest extends KernelTestCase
         }
 
         $this->em->flush();
-
         parent::tearDown();
     }
 

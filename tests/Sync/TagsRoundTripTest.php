@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use DateTime;
@@ -49,7 +51,6 @@ final class TagsRoundTripTest extends KernelTestCase
         $this->pageSync->export('localhost.dev', true, $this->contentDir);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {
@@ -64,7 +65,6 @@ final class TagsRoundTripTest extends KernelTestCase
         }
 
         $this->em->flush();
-
         parent::tearDown();
     }
 
@@ -206,8 +206,6 @@ final class TagsRoundTripTest extends KernelTestCase
         $exporter = self::getContainer()->get(MediaExporter::class);
         $exporter->csvDir = $contentDirFinder2->getBaseDir();
         $exporter->exportMedias();
-
-        $mediaId = $media->id;
 
         // Delete from DB
         $this->em->remove($media);

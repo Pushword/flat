@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use PHPUnit\Framework\TestCase;
@@ -144,8 +146,8 @@ final class SyncStateManagerTest extends TestCase
 
     public function testNullHostUsesDefault(): void
     {
-        $this->manager->recordImport('page', null);
-        $lastSyncTime = $this->manager->getLastSyncTime('page', null);
+        $this->manager->recordImport('page');
+        $lastSyncTime = $this->manager->getLastSyncTime('page');
 
         self::assertGreaterThan(0, $lastSyncTime);
     }

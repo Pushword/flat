@@ -31,12 +31,12 @@ final class PageImporter extends AbstractImporter
     /**
      * @var Page[]|null
      */
-    protected ?array $pages = null;
+    private ?array $pages = null;
 
     /**
      * @var array<string, array<string, mixed>>
      */
-    protected array $toAddAtTheEnd = [];
+    private array $toAddAtTheEnd = [];
 
     #[Required]
     public FlatFileContentDirFinder $contentDirFinder;
@@ -153,7 +153,7 @@ final class PageImporter extends AbstractImporter
         $data = \is_array($data) ? $data : throw new Exception(\sprintf('Failed to parse front matter in "%s": expected array, got %s', $filePath, get_debug_type($data)));
         /** @var array<string, mixed> $data */
         $previousImportedCount = $this->importedCount;
-        $this->pageList[$slug] = $this->editPage($slug, $data, $document->body(), $lastEditDateTime, $relativeFilePath);
+        $this->pageList[$slug] = $this->editPage($slug, $data, $document->body(), $lastEditDateTime);
 
         // Return true if this file was actually imported (not skipped)
         return $this->importedCount > $previousImportedCount;
@@ -220,7 +220,6 @@ final class PageImporter extends AbstractImporter
         array $data,
         string $content,
         DateTime|DateTimeImmutable|DateTimeInterface $lastEditDateTime,
-        string $relativeFilePath = '',
     ): Page {
         unset($data['id']);
 

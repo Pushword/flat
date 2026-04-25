@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Service;
 
 use PHPUnit\Framework\TestCase;
@@ -202,6 +204,6 @@ final class FlatLockManagerTest extends TestCase
     {
         $this->manager->acquireLock(null, 'manual');
 
-        self::assertTrue($this->manager->isLocked(null));
+        self::assertTrue($this->manager->isLocked());
     }
 }

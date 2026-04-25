@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests;
 
 use Doctrine\ORM\EntityManager;
 use FilesystemIterator;
-use Override;
 use PHPUnit\Framework\Attributes\Group;
 use Pushword\Core\Entity\Page;
 use Pushword\Flat\FlatFileContentDirFinder;
@@ -34,7 +35,6 @@ final class FlatSyncTest extends KernelTestCase
         $this->preExistingFiles = $this->listAllFiles($this->contentDir);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         $this->cleanAllCreatedFiles();

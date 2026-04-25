@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Override;
@@ -77,7 +79,6 @@ final class CachingOptimizationsTest extends KernelTestCase
         $this->pageSync->export('localhost.dev', true, $this->contentDir);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {

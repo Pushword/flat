@@ -41,7 +41,6 @@ final class AdminNotificationServiceTest extends KernelTestCase
         $this->service = $service;
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->testNotifications as $notification) {
@@ -53,7 +52,6 @@ final class AdminNotificationServiceTest extends KernelTestCase
         }
 
         $this->testNotifications = [];
-
         parent::tearDown();
     }
 

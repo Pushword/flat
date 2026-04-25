@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
@@ -47,7 +49,6 @@ final class MultiHostSyncTest extends KernelTestCase
         $this->stateManager = $stateManager;
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {
@@ -64,7 +65,6 @@ final class MultiHostSyncTest extends KernelTestCase
         }
 
         $this->em->flush();
-
         parent::tearDown();
     }
 

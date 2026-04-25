@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Command;
 
 use Override;
@@ -35,7 +37,6 @@ final class FlatLintCommandTest extends KernelTestCase
         $this->contentDir = $contentDirFinder->get('localhost.dev');
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {

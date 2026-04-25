@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
-use Override;
 use PHPUnit\Framework\Attributes\Group;
 use Pushword\Core\Entity\User;
 use Pushword\Core\Repository\UserRepository;
@@ -23,7 +24,6 @@ final class UserSyncTest extends KernelTestCase
         $this->configDir = $projectDir.'/config';
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         $this->cleanupTestUsers();

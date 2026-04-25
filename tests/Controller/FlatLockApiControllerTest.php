@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Controller;
 
 use Doctrine\ORM\EntityManager;
@@ -51,7 +53,6 @@ final class FlatLockApiControllerTest extends WebTestCase
         $this->em->flush();
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         // Clean up test user
@@ -63,8 +64,7 @@ final class FlatLockApiControllerTest extends WebTestCase
 
         // Clean up any locks
         $this->lockManager->releaseLock('test.example.com');
-        $this->lockManager->releaseLock(null);
-
+        $this->lockManager->releaseLock();
         parent::tearDown();
     }
 
@@ -242,7 +242,7 @@ final class FlatLockApiControllerTest extends WebTestCase
         self::assertTrue($response['success']);
 
         // Verify global lock is in effect
-        self::assertTrue($this->lockManager->isLocked(null));
+        self::assertTrue($this->lockManager->isLocked());
     }
 
     public function testLockWithCustomTtl(): void

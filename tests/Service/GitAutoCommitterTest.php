@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Service;
 
 use Override;
@@ -25,7 +27,6 @@ final class GitAutoCommitterTest extends KernelTestCase
         mkdir($this->tempDir, 0755, true);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         if (is_dir($this->tempDir)) {

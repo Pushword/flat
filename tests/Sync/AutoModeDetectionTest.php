@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use Doctrine\ORM\EntityManager;
@@ -89,7 +91,6 @@ final class AutoModeDetectionTest extends KernelTestCase
         $this->pageSync->export('localhost.dev', true, $this->contentDir);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {
@@ -104,7 +105,6 @@ final class AutoModeDetectionTest extends KernelTestCase
         }
 
         $this->em->flush();
-
         if (null !== $this->isolatedContentDir) {
             $this->filesystem->remove($this->isolatedContentDir);
         }
@@ -226,8 +226,7 @@ final class AutoModeDetectionTest extends KernelTestCase
 
     public function testMediaAutoModeDetectsNewFile(): void
     {
-        /** @var string $mediaDir */
-        $mediaDir = self::getContainer()->getParameter('pw.media_dir');
+        self::getContainer()->getParameter('pw.media_dir');
 
         // Create new media file in content dir
         $mediaPath = $this->contentDir.'/media';

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests;
 
 use DateTime;
@@ -53,7 +55,6 @@ final class PageSyncTest extends KernelTestCase
         $this->pageSync = $pageSync;
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {
@@ -379,7 +380,7 @@ MD;
         self::assertFileExists($indexCsvPath, 'index.csv should exist');
 
         // Check French pages are separated (either in index.fr.csv or fr/index.csv)
-        $indexContent = file_get_contents($indexCsvPath);
+        file_get_contents($indexCsvPath);
 
         // The French homepage should NOT be in the main index.csv (it has locale 'fr')
         // It should be in a separate file

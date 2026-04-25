@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Command;
 
 use Override;
@@ -41,7 +43,6 @@ final class ConcurrentSyncTest extends KernelTestCase
         $this->filesystem = new Filesystem();
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->cleanupFiles as $file) {
@@ -50,7 +51,6 @@ final class ConcurrentSyncTest extends KernelTestCase
 
         // Release any locks
         $this->lockManager->releaseLock($this->lockTestHost);
-
         parent::tearDown();
     }
 

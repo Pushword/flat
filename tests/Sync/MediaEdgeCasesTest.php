@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use DateTime;
@@ -33,7 +35,6 @@ final class MediaEdgeCasesTest extends KernelTestCase
         $this->em = $em;
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->tempFiles as $file) {
@@ -360,9 +361,6 @@ final class MediaEdgeCasesTest extends KernelTestCase
         $imported = $importer->import($imgPath, new DateTime());
         $importer->finishImport();
         self::assertTrue($imported);
-
-        // Image should be resized to max 1980x1280
-        $localPath = $imgPath;
         // Also check the media dir copy
         /** @var MediaStorageAdapter $mediaStorage */
         $mediaStorage = self::getContainer()->get(MediaStorageAdapter::class);
@@ -475,7 +473,7 @@ final class MediaEdgeCasesTest extends KernelTestCase
         self::assertContains('edge-rename-original.txt', $missingFiles, 'Original file should be flagged as missing');
 
         // Import the renamed file — hash match should update existing entity
-        $result = $importer->importMedia($renamedPath, new DateTime());
+        $importer->importMedia($renamedPath, new DateTime());
         $importer->finishImport();
 
         // The existing entity should have been updated (not a new one created)

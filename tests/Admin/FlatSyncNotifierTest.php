@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Admin;
 
 use Override;
@@ -51,13 +53,11 @@ final class FlatSyncNotifierTest extends KernelTestCase
         $changeDetector->invalidateCache(self::TEST_HOST);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         /** @var FlatLockManager $lockManager */
         $lockManager = self::getContainer()->get(FlatLockManager::class);
         $lockManager->releaseLock($this->lockTestHost);
-
         // Clean up conflict files
         $conflictFiles = [
             ...(glob($this->contentDir.'/*~conflict-*') ?: []),

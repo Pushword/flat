@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Sync;
 
 use DateTime;
@@ -55,7 +57,6 @@ final class CrashRecoveryTest extends KernelTestCase
         $this->pageSync->export('localhost.dev', true, $this->contentDir);
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $file) {
@@ -70,7 +71,6 @@ final class CrashRecoveryTest extends KernelTestCase
         }
 
         $this->em->flush();
-
         // Clean up conflict files
         $conflictFiles = glob($this->contentDir.'/*~conflict-*') ?: [];
         foreach ($conflictFiles as $file) {

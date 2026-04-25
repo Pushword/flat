@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pushword\Flat\Tests\Repository;
 
 use DateTimeImmutable;
@@ -35,7 +37,6 @@ final class AdminNotificationRepositoryTest extends KernelTestCase
         $this->repository = $repository;
     }
 
-    #[Override]
     protected function tearDown(): void
     {
         foreach ($this->testNotifications as $notification) {
@@ -47,7 +48,6 @@ final class AdminNotificationRepositoryTest extends KernelTestCase
         }
 
         $this->testNotifications = [];
-
         parent::tearDown();
     }
 
