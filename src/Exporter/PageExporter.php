@@ -281,7 +281,7 @@ final class PageExporter
             return;
         }
 
-        $defaultLocale = $this->apps->get()->getLocale();
+        $defaultLocale = $this->apps->get()->locale;
 
         /** @var array<string, Page[]> $publishedByLocale */
         $publishedByLocale = [];
@@ -403,7 +403,7 @@ final class PageExporter
         $columns = [];
         foreach ($pages as $page) {
             /** @var array<string, mixed> $customProperties */
-            $customProperties = $page->getCustomProperties();
+            $customProperties = $page->customProperties;
             foreach (array_keys($customProperties) as $property) {
                 $columns[$property] = true;
             }
@@ -427,7 +427,7 @@ final class PageExporter
             'h1' => '' !== $h1 ? $h1 : $page->getTitle(),
             'publishedAt' => null !== $page->getPublishedAt() ? $page->getPublishedAt()->format('Y-m-d H:i') : '',
             'locale' => $page->locale,
-            'parentPage' => null !== $page->getParentPage() ? $page->getParentPage()->getSlug() : '',
+            'parentPage' => null !== $page->parentPage ? $page->parentPage->getSlug() : '',
             'tags' => trim($page->getTags()),
         ];
     }
@@ -458,14 +458,14 @@ final class PageExporter
 
         // Internal redirects authored on this page (Jekyll redirect_from style).
         // Emitted as a {path: code} map; ksort keeps the output stable for idempotency.
-        $redirectFrom = $page->getRedirectFromMap();
+        $redirectFrom = $page->redirectFrom;
         if ([] !== $redirectFrom) {
             ksort($redirectFrom);
             $data['redirectFrom'] = $redirectFrom;
         }
 
         // Unpack custom properties at top level and apply converters
-        foreach ($page->getCustomProperties() as $key => $value) {
+        foreach ($page->customProperties as $key => $value) {
             $converted = $this->converterRegistry->toFlatValue($key, $value);
             if (null !== $converted) {
                 $data[$key] = $converted;
@@ -575,7 +575,7 @@ final class PageExporter
         }
 
         $getter = 'get'.ucfirst($property);
-        $value = $page->$getter(); // @phpstan-ignore-line
+        $value = method_exists($page, $getter) ? $page->$getter() : $page->{$property}; // @phpstan-ignore-line
 
         if ('publishedAt' === $property) {
             assert(null === $value || $value instanceof DateTimeInterface);
@@ -595,7 +595,7 @@ final class PageExporter
             $currentHost = $this->apps->get()->getMainHost();
 
             if ('translations' === $property) {
-                $siteLocale = $this->apps->get()->getLocale();
+                $siteLocale = $this->apps->get()->locale;
                 $isMainLocale = '' === $page->locale || $page->locale === $siteLocale;
 
                 if (! $isMainLocale) {
@@ -642,7 +642,7 @@ final class PageExporter
             return null;
         }
 
-        if ('locale' === $property && $value === $this->apps->get()->getLocale()) {
+        if ('locale' === $property && $value === $this->apps->get()->locale) {
             return null;
         }
 

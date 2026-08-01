@@ -14,6 +14,7 @@ use Pushword\Core\Image\ImageCacheManager;
 use Pushword\Core\Repository\MediaRepository;
 use Pushword\Core\Service\MediaStorageAdapter;
 use Pushword\Core\Site\SiteRegistry;
+use Pushword\Core\Utils\Entity;
 use Pushword\Flat\Exporter\MediaCsvHelper;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Yaml;
@@ -504,6 +505,10 @@ class MediaImporter extends AbstractImporter
             return $media->$getter(); // @phpstan-ignore-line
         }
 
+        if (Entity::isPubliclyWritableProperty($media, $key)) {
+            return $media->{$key}; // @phpstan-ignore property.dynamicName
+        }
+
         return $media->getCustomProperty($key);
     }
 
@@ -530,18 +535,24 @@ class MediaImporter extends AbstractImporter
      */
     private function setData(Media $media, array $data): void
     {
-        $media->setCustomProperties([]);
+        $media->customProperties = [];
 
         foreach ($data as $key => $value) {
             $key = self::underscoreToCamelCase((string) $key);
 
+            if (\in_array($key, ['createdAt', 'updatedAt', 'fileName'], true)) {
+                continue;
+            }
+
             $setter = 'set'.ucfirst($key);
             if (method_exists($media, $setter)) {
-                if (\in_array($key, ['createdAt', 'updatedAt', 'fileName'], true)) {
-                    continue;
-                }
-
                 $media->$setter($value); // @phpstan-ignore-line
+
+                continue;
+            }
+
+            if (Entity::isPubliclyWritableProperty($media, $key)) {
+                $media->{$key} = $value; // @phpstan-ignore property.dynamicName
 
                 continue;
             }
