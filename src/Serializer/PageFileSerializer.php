@@ -8,6 +8,7 @@ use DateTimeInterface;
 use Doctrine\Common\Collections\Collection;
 use Normalizer;
 use Pushword\Core\Entity\Page;
+use Pushword\Core\Service\EditorialTimezone;
 use Pushword\Core\Service\RevisionCalculator;
 use Pushword\Core\Site\SiteRegistry;
 use Pushword\Core\Utils\Entity;
@@ -15,7 +16,6 @@ use Pushword\Flat\Converter\PropertyConverterRegistry;
 use Pushword\Flat\Converter\PublishedAtConverter;
 use Pushword\Flat\Exporter\ExporterDefaultValueHelper;
 use Spatie\YamlFrontMatter\Document;
-use Spatie\YamlFrontMatter\YamlFrontMatter;
 use Stringable;
 use Symfony\Component\Yaml\Yaml;
 
@@ -58,6 +58,8 @@ final class PageFileSerializer
         private readonly SiteRegistry $apps,
         private readonly PropertyConverterRegistry $converterRegistry,
         private readonly RevisionCalculator $revisions,
+        private readonly PublishedAtConverter $publishedAtConverter,
+        private readonly EditorialTimezone $editorialTimezone,
     ) {
         $this->defaultValue = new ExporterDefaultValueHelper();
     }
@@ -135,7 +137,8 @@ final class PageFileSerializer
      * complex parser only takes the first two `---` lines as delimiters, which
      * is only safe when the document actually opens with front matter — hence
      * the starts-with gate; without it two body rules would be misread as a
-     * front-matter block.
+     * front-matter block. {@see FrontMatterParser} extends it to read unquoted
+     * dates as written.
      */
     public function parse(string $content): Document
     {
@@ -148,7 +151,7 @@ final class PageFileSerializer
             return new Document([], $content);
         }
 
-        return YamlFrontMatter::markdownCompatibleParse($content);
+        return new FrontMatterParser($content)->parse();
     }
 
     /**
@@ -463,7 +466,7 @@ final class PageFileSerializer
         if ('publishedAt' === $property) {
             assert(null === $value || $value instanceof DateTimeInterface);
 
-            return PublishedAtConverter::toFlatValue($value);
+            return $this->publishedAtConverter->toFlatValue($value);
         }
 
         if ($value instanceof Page) {
@@ -530,7 +533,7 @@ final class PageFileSerializer
         }
 
         if ($value instanceof DateTimeInterface) {
-            $value = $value->format('Y-m-d H:i');
+            $value = $this->editorialTimezone->format($value);
         }
 
         if (! is_scalar($value)) {
