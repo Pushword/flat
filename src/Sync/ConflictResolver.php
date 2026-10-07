@@ -59,17 +59,16 @@ final class ConflictResolver
 
             // Most recent wins
             $winner = $fileModifiedAt >= $page->updatedAt ? 'flat' : 'db';
-            $backupFile = null;
 
             if ('flat' === $winner) {
                 // DB version loses, create backup of file (which will be overwritten by import)
                 $backupFile = $this->createMarkdownBackup($filePath, 'db');
-                $this->logConflict('Page', (string) $page->id, 'flat', $backupFile);
             } else {
                 // Flat version loses, create backup before it's overwritten
                 $backupFile = $this->createMarkdownBackup($filePath, 'flat');
-                $this->logConflict('Page', (string) $page->id, 'db', $backupFile);
             }
+
+            $this->logConflict($page, $winner, $backupFile);
 
             $conflictData = [
                 'entityType' => 'page',
@@ -167,18 +166,12 @@ final class ConflictResolver
         return $deleted;
     }
 
-    private function logConflict(
-        string $entityType,
-        string $entityId,
-        string $winner,
-        ?string $backupFile,
-        ?string $field = null,
-    ): void {
+    private function logConflict(Page $page, string $winner, ?string $backupFile): void
+    {
         $message = \sprintf(
-            'Conflict detected on %s #%s%s - Winner: %s%s',
-            $entityType,
-            $entityId,
-            null !== $field ? ' ('.$field.')' : '',
+            'Conflict detected on page %s/%s - Winner: %s%s',
+            $page->host,
+            $page->slug,
             $winner,
             null !== $backupFile ? ' - Backup: '.basename($backupFile) : '',
         );
@@ -189,11 +182,11 @@ final class ConflictResolver
 
         // Create admin notification with email alert
         $this->notificationService?->notifyConflict([
-            'entityType' => $entityType,
-            'entityId' => $entityId,
+            'entityType' => 'Page',
+            'entityId' => (string) $page->id,
+            'slug' => $page->slug,
             'winner' => $winner,
             'backupFile' => $backupFile,
-            'field' => $field,
-        ]);
+        ], $page->host);
     }
 }
